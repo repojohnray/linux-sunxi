@@ -144,5 +144,6 @@
 &spdif {
 	pinctrl-names = "default";
 	pinctrl-0 = <&spdif_tx_pins_a>;
+	spdif-out = "okay";
 	status = "okay";
 };
