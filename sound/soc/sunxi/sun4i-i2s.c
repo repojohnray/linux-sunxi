@@ -714,6 +714,30 @@ static int sun4i_i2s_trigger(struct snd_pcm_substream *substream, int cmd,
 	default:
 		return -EINVAL;
 	}
+	{
+	/* COOPS DEBUGGING FOR NOW */
+	u32 reg_val = 0;
+
+	printk("I2S Command State %d Audio Clock is %lu\n", cmd, clk_get_rate(i2s->mod_clk));
+	regmap_read(i2s->regmap, SUN4I_I2S_CTRL_REG, &reg_val);
+	printk("SUN4I_I2S_CTRL_REG 0x%x\n", reg_val);
+	regmap_read(i2s->regmap, SUN4I_I2S_FMT0_REG, &reg_val);
+	printk("SUN4I_I2S_FMT0_REG 0x%x\n", reg_val);
+	regmap_read(i2s->regmap, SUN4I_I2S_FMT1_REG, &reg_val);
+	printk("SUN4I_I2S_FMT1_REG 0x%x\n", reg_val);
+	regmap_read(i2s->regmap, SUN4I_I2S_FIFO_CTRL_REG, &reg_val);
+	printk("SUN4I_I2S_FIFO_CTRL_REG 0x%x\n", reg_val);
+	regmap_read(i2s->regmap, SUN4I_I2S_CLK_DIV_REG, &reg_val);
+	printk("SUN4I_I2S_CLK_DIV_REG 0x%x\n", reg_val);
+	regmap_read(i2s->regmap, SUN4I_I2S_FIFO_STA_REG, &reg_val);
+	printk("SUN4I_I2S_FIFO_STA_REG 0x%x\n", reg_val);
+	regmap_read(i2s->regmap, SUN4I_I2S_TX_CHAN_SEL_REG, &reg_val);
+	printk("SUN4I_I2S_TX_CHAN_SEL_REG 0x%x\n", reg_val);
+	regmap_read(i2s->regmap, SUN4I_I2S_TX_CHAN_MAP_REG, &reg_val);
+	printk("SUN4I_I2S_TX_CHAN_MAP_REG 0x%x\n", reg_val);
+	regmap_read(i2s->regmap, SUN8I_I2S_TX_CHAN_MAP_REG, &reg_val);
+	printk("SUN8I_I2S_TX_CHAN_MAP_REG 0x%x\n", reg_val);
+	}
 
 	return 0;
 }
