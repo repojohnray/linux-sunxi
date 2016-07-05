@@ -586,6 +586,13 @@
 				bias-pull-up;
 			};
 
+			spdif_pins_a: spdif@0 {
+				allwinner,pins = "PH28";
+				allwinner,function = "spdif";
+				allwinner,drive = <SUN4I_PINCTRL_10_MA>;
+				allwinner,pull = <SUN4I_PINCTRL_PULL_UP>;
+			};
+
 			uart0_pins_a: uart0@0 {
 				pins = "PH20", "PH21";
 				function = "uart0";
