@@ -53,6 +53,14 @@
 	status = "okay";
 };
 
+&gsl1680 {
+	compatible = "silead,gsl3675";
+	touchscreen-fw-name = "silead/gsl3675-gt90h.fw";
+	touchscreen-size-x = <1792>;
+	touchscreen-size-y = <1024>;
+	status = "okay";
+};
+
 &lradc {
 	button@600 {
 		label = "Back";
