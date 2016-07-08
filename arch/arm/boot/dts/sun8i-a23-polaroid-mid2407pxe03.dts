@@ -48,3 +48,20 @@
 	model = "Polaroid MID2407PXE03 tablet";
 	compatible = "polaroid,mid2407pxe03", "allwinner,sun8i-a23";
 };
+
+&gsl1680 {
+	touchscreen-size-x = <960>;
+	touchscreen-size-y = <640>;
+	touchscreen-inverted-x;
+	touchscreen-inverted-y;
+	touchscreen-fw-name = "silead/gsl1680-polaroid-mid2407pxe03.fw";
+	status = "okay";
+};
+
+&reg_ldo_io1 {
+	regulator-always-on;
+	regulator-min-microvolt = <3300000>;
+	regulator-max-microvolt = <3300000>;
+	regulator-name = "vcc-touchscreen";
+	status = "okay";
+};
