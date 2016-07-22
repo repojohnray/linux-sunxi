@@ -355,10 +355,29 @@ static int sun4i_i2s_hw_params(struct snd_pcm_substream *substream,
 {
 	struct sun4i_i2s *i2s = snd_soc_dai_get_drvdata(dai);
 	int sr, wss;
-	u32 width;
+	u32 width, channels = 0;
 
-	if (params_channels(params) != 2)
+	switch (params_channels(params)) {
+	case 8:
+		channels |= SUN4I_I2S_CTRL_SDO_EN(3);
+	case 6:
+		channels |= SUN4I_I2S_CTRL_SDO_EN(2);
+	case 4:
+		channels |= SUN4I_I2S_CTRL_SDO_EN(1);
+	case 2:
+		channels |= SUN4I_I2S_CTRL_SDO_EN(0);
+		break;
+	default:
+		dev_err(dai->dev, "invalid channel: %d\n",
+			params_channels(params));
 		return -EINVAL;
+	}
+	regmap_update_bits(i2s->regmap, SUN4I_I2S_CTRL_REG,
+			   SUN4I_I2S_CTRL_SDO_EN_MASK, channels);
+
+	/* Enable the channels */
+	regmap_write(i2s->regmap, SUN4I_I2S_TX_CHAN_SEL_REG,
+		     SUN4I_I2S_TX_CHAN_SEL(params_channels(params)));
 
 	switch (params_physical_width(params)) {
 	case 16:
@@ -760,19 +779,6 @@ static int sun4i_i2s_startup(struct snd_pcm_substream *substream,
 	regmap_update_bits(i2s->regmap, SUN4I_I2S_CTRL_REG,
 			   SUN4I_I2S_CTRL_GL_EN,SUN4I_I2S_CTRL_GL_EN);
 
-	/* Enable the first output line */
-	regmap_update_bits(i2s->regmap, SUN4I_I2S_CTRL_REG,
-			   SUN4I_I2S_CTRL_SDO_EN_MASK,
-			   SUN4I_I2S_CTRL_SDO_EN(0));
-
-	/* Enable the first two channels */
-	regmap_write(i2s->regmap, SUN4I_I2S_TX_CHAN_SEL_REG,
-		     SUN4I_I2S_TX_CHAN_SEL(2));
-
-	/* Map them to the two first samples coming in */
-	regmap_write(i2s->regmap, SUN4I_I2S_TX_CHAN_MAP_REG,
-		     SUN4I_I2S_TX_CHAN_MAP(0, 0) | SUN4I_I2S_TX_CHAN_MAP(1, 1));
-
 	return clk_prepare_enable(i2s->mod_clk);
 }
 
@@ -1025,6 +1031,7 @@ static int sun4i_i2s_probe(struct platform_device *pdev)
 	const struct sun4i_i2s_quirks *quirks;
 	void __iomem *regs;
 	int irq, ret;
+	u32 val;
 
 	i2s = devm_kzalloc(&pdev->dev, sizeof(*i2s), GFP_KERNEL);
 	if (!i2s)
@@ -1093,6 +1100,12 @@ static int sun4i_i2s_probe(struct platform_device *pdev)
 		ret = sun4i_i2s_runtime_resume(&pdev->dev);
 		if (ret)
 			goto err_pm_disable;
+	}
+
+	if (!of_property_read_u32(pdev->dev.of_node,
+				  "allwinner,playback-channels", &val)) {
+		if (val >= 2 && val <= 8)
+			sun4i_i2s_dai.playback.channels_max = val;
 	}
 
 	/* Register ops with dai */
