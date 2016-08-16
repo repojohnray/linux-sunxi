@@ -68,6 +68,16 @@
 	status  = "okay";
 };
 
+&i2c1 {
+	accelerometer: accelerometer@0 {
+		/*
+		 * Enabled by sunxi-q8-hardwaremgr if it detects a
+		 * known model accelerometer.
+		 */
+		status = "disabled";
+	};
+};
+
 &mmc1 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&mmc1_pins_a>;
@@ -93,6 +103,17 @@
 		allwinner,drive = <SUN4I_PINCTRL_10_MA>;
 		allwinner,pull = <SUN4I_PINCTRL_PULL_UP>;
 	};
+};
+
+&reg_ldo_io1 {
+	regulator-min-microvolt = <3300000>;
+	regulator-max-microvolt = <3300000>;
+	regulator-name = "vcc-touchscreen";
+	status = "okay";
+};
+
+&touchscreen {
+	vddio-supply = <&reg_ldo_io1>;
 };
 
 &usbphy {
