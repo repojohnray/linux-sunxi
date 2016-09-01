@@ -794,6 +794,17 @@ config PANEL_BOOT_MESSAGE
 	  An empty message will only clear the display at driver init time. Any other
 	  printf()-formatted message is valid with newline and escape codes.
 
+config Q8_HARDWAREMGR
+	bool "Allwinner Q8 tablet hardware manager"
+	depends on I2C
+	depends on (ARCH_SUNXI && GPIOLIB && OF && OF_DYNAMIC) || COMPILE_TEST
+	default	n
+	help
+	  This option enables support for autodetecting the touchscreen
+	  on Allwinner Q8 tablets.
+
+	  If unsure, say N.
+
 source "drivers/misc/c2port/Kconfig"
 source "drivers/misc/eeprom/Kconfig"
 source "drivers/misc/cb710/Kconfig"
