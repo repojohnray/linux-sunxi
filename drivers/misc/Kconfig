@@ -801,7 +801,7 @@ config Q8_HARDWAREMGR
 	default	n
 	help
 	  This option enables support for autodetecting the touchscreen
-	  on Allwinner Q8 tablets.
+	  and accelerometer on Allwinner Q8 tablets.
 
 	  If unsure, say N.
 
