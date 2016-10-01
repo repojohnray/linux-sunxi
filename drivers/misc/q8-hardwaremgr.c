@@ -144,6 +144,7 @@ struct q8_hardwaremgr_data {
 	int touchscreen_invert_y;
 	int touchscreen_swap_x_y;
 	const char *touchscreen_fw_name;
+	bool has_rda599x;
 };
 
 typedef int (*bus_probe_func)(struct q8_hardwaremgr_data *data,
@@ -454,6 +455,28 @@ static void q8_hardwaremgr_apply_touchscreen(struct q8_hardwaremgr_data *data)
 	of_node_put(np);
 }
 
+static int q8_hardwaremgr_probe_rda599x(struct q8_hardwaremgr_data *data,
+					struct i2c_client *client)
+{
+	int id;
+
+	/*
+	 * Check for the (integrated) rda580x / rda5820 fm receiver at 0x11
+	 *
+	 * Alternatively we could check for the wifi_rf i2c interface at
+	 * address 0x14, by selecting page/bank 1 through:
+	 * smbus_write_word_swapped(0x3f, 0x01)
+	 * and then doing a smbus_read_word_swapped(0x20) which will
+	 * return 0x5990 for a rda5990. We prefer the fm detect method since
+	 * we want to avoid doing any smbus_writes while probing.
+	 */
+	id = i2c_smbus_read_word_swapped(client, 0x0c);
+	if (id == 0x5802 || id == 0x5803 || id == 0x5805 || id == 0x5820)
+		data->has_rda599x = true;
+
+	return id == -ETIMEDOUT ? -ETIMEDOUT : -ENODEV;
+}
+
 static int q8_hardwaremgr_probe_mxc6225(struct q8_hardwaremgr_data *data,
 					struct i2c_client *client)
 {
@@ -594,6 +617,8 @@ static int q8_hardwaremgr_probe_da311(struct q8_hardwaremgr_data *data,
 static int q8_hardwaremgr_probe_accelerometer(struct q8_hardwaremgr_data *data,
 					      struct i2c_adapter *adap)
 {
+	/* The rda599x wifi/bt/fm shares the i2c bus with the accelerometer */
+	PROBE_CLIENT(NULL,		   0x11, q8_hardwaremgr_probe_rda599x);
 	PROBE_CLIENT(&data->accelerometer, 0x15, q8_hardwaremgr_probe_mxc6225);
 	PROBE_CLIENT(&data->accelerometer, 0x4c, q8_hardwaremgr_probe_mc3230);
 	PROBE_CLIENT(&data->accelerometer, 0x1c, q8_hardwaremgr_probe_dmard06);
@@ -748,6 +773,9 @@ static int q8_hardwaremgr_probe(struct platform_device *pdev)
 				      q8_hardwaremgr_probe_accelerometer);
 	if (ret)
 		goto error;
+
+	if (data->has_rda599x)
+		dev_info(data->dev, "Found a rda599x sdio/i2c wifi/bt/fm combo chip\n");
 
 	q8_hardwaremgr_apply_touchscreen(data);
 	q8_hardwaremgr_apply_accelerometer(data);
