@@ -131,6 +131,7 @@ config SND_SOC_ALL_CODECS
 	select SND_SOC_STA529 if I2C
 	select SND_SOC_STAC9766 if SND_SOC_AC97_BUS
 	select SND_SOC_STI_SAS
+	select SND_SOC_SUNXI_HDMI
 	select SND_SOC_TAS2552 if I2C
 	select SND_SOC_TAS5086 if I2C
 	select SND_SOC_TAS571X if I2C
@@ -792,6 +793,14 @@ config SND_SOC_STAC9766
 
 config SND_SOC_STI_SAS
 	tristate "codec Audio support for STI SAS codec"
+
+config SND_SOC_SUNXI_HDMI
+	tristate "Allwinner sunxi HDMI Support"
+	default m if DRM_SUNXI_DE2_HDMI=m
+	default y if DRM_SUNXI_DE2_HDMI=y
+	select SND_PCM_ELD
+	help
+	  Enable HDMI audio output
 
 config SND_SOC_TAS2552
 	tristate "Texas Instruments TAS2552 Mono Audio amplifier"
