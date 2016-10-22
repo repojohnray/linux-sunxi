@@ -794,7 +794,6 @@ static struct ib_qp *i40iw_create_qp(struct ib_pd *ibpd,
 	return &iwqp->ibqp;
 error:
 	i40iw_free_qp_resources(iwdev, iwqp, qp_num);
-	kfree(mem);
 	return ERR_PTR(err_code);
 }
 
@@ -1474,6 +1473,7 @@ static int i40iw_hw_alloc_stag(struct i40iw_device *iwdev, struct i40iw_mr *iwmr
 	info->stag_idx = iwmr->stag >> I40IW_CQPSQ_STAG_IDX_SHIFT;
 	info->pd_id = iwpd->sc_pd.pd_id;
 	info->total_len = iwmr->length;
+	info->remote_access = true;
 	cqp_info->cqp_cmd = OP_ALLOC_STAG;
 	cqp_info->post_sq = 1;
 	cqp_info->in.u.alloc_stag.dev = &iwdev->sc_dev;
@@ -1924,8 +1924,7 @@ static int i40iw_dereg_mr(struct ib_mr *ib_mr)
 		}
 		if (iwpbl->pbl_allocated)
 			i40iw_free_pble(iwdev->pble_rsrc, palloc);
-		kfree(iwpbl->iwmr);
-		iwpbl->iwmr = NULL;
+		kfree(iwmr);
 		return 0;
 	}
 

@@ -341,8 +341,10 @@ static struct dentry *fuse_lookup(struct inode *dir, struct dentry *entry,
 	struct dentry *newent;
 	bool outarg_valid = true;
 
+	fuse_lock_inode(dir);
 	err = fuse_lookup_name(dir->i_sb, get_node_id(dir), &entry->d_name,
 			       &outarg, &inode);
+	fuse_unlock_inode(dir);
 	if (err == -ENOENT) {
 		outarg_valid = false;
 		err = 0;
@@ -478,7 +480,7 @@ static int fuse_atomic_open(struct inode *dir, struct dentry *entry,
 	struct fuse_conn *fc = get_fuse_conn(dir);
 	struct dentry *res = NULL;
 
-	if (d_unhashed(entry)) {
+	if (d_in_lookup(entry)) {
 		res = fuse_lookup(dir, entry, 0);
 		if (IS_ERR(res))
 			return PTR_ERR(res);
@@ -1341,7 +1343,9 @@ static int fuse_readdir(struct file *file, struct dir_context *ctx)
 		fuse_read_fill(req, file, ctx->pos, PAGE_SIZE,
 			       FUSE_READDIR);
 	}
+	fuse_lock_inode(inode);
 	fuse_request_send(fc, req);
+	fuse_unlock_inode(inode);
 	nbytes = req->out.args[0].size;
 	err = req->out.h.error;
 	fuse_put_request(fc, req);
@@ -1697,14 +1701,46 @@ error:
 static int fuse_setattr(struct dentry *entry, struct iattr *attr)
 {
 	struct inode *inode = d_inode(entry);
+	struct file *file = (attr->ia_valid & ATTR_FILE) ? attr->ia_file : NULL;
+	int ret;
 
 	if (!fuse_allow_current_process(get_fuse_conn(inode)))
 		return -EACCES;
 
-	if (attr->ia_valid & ATTR_FILE)
-		return fuse_do_setattr(inode, attr, attr->ia_file);
-	else
-		return fuse_do_setattr(inode, attr, NULL);
+	if (attr->ia_valid & (ATTR_KILL_SUID | ATTR_KILL_SGID)) {
+		int kill;
+
+		attr->ia_valid &= ~(ATTR_KILL_SUID | ATTR_KILL_SGID |
+				    ATTR_MODE);
+		/*
+		 * ia_mode calculation may have used stale i_mode.  Refresh and
+		 * recalculate.
+		 */
+		ret = fuse_do_getattr(inode, NULL, file);
+		if (ret)
+			return ret;
+
+		attr->ia_mode = inode->i_mode;
+		kill = should_remove_suid(entry);
+		if (kill & ATTR_KILL_SUID) {
+			attr->ia_valid |= ATTR_MODE;
+			attr->ia_mode &= ~S_ISUID;
+		}
+		if (kill & ATTR_KILL_SGID) {
+			attr->ia_valid |= ATTR_MODE;
+			attr->ia_mode &= ~S_ISGID;
+		}
+	}
+	if (!attr->ia_valid)
+		return 0;
+
+	ret = fuse_do_setattr(inode, attr, file);
+	if (!ret) {
+		/* Directory mode changed, may need to revalidate access */
+		if (d_is_dir(entry) && (attr->ia_valid & ATTR_MODE))
+			fuse_invalidate_entry_cache(entry);
+	}
+	return ret;
 }
 
 static int fuse_getattr(struct vfsmount *mnt, struct dentry *entry,
@@ -1796,6 +1832,23 @@ static ssize_t fuse_getxattr(struct dentry *entry, struct inode *inode,
 	return ret;
 }
 
+static int fuse_verify_xattr_list(char *list, size_t size)
+{
+	size_t origsize = size;
+
+	while (size) {
+		size_t thislen = strnlen(list, size);
+
+		if (!thislen || thislen == size)
+			return -EIO;
+
+		size -= thislen + 1;
+		list += thislen + 1;
+	}
+
+	return origsize;
+}
+
 static ssize_t fuse_listxattr(struct dentry *entry, char *list, size_t size)
 {
 	struct inode *inode = d_inode(entry);
@@ -1831,6 +1884,8 @@ static ssize_t fuse_listxattr(struct dentry *entry, char *list, size_t size)
 	ret = fuse_simple_request(fc, &args);
 	if (!ret && !size)
 		ret = outarg.size;
+	if (ret > 0 && size)
+		ret = fuse_verify_xattr_list(list, ret);
 	if (ret == -ENOSYS) {
 		fc->no_listxattr = 1;
 		ret = -EOPNOTSUPP;

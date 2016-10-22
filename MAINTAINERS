@@ -1707,8 +1707,6 @@ S:	Maintained
 F:	drivers/edac/altera_edac.
 
 ARM/STI ARCHITECTURE
-M:	Srinivas Kandagatla <srinivas.kandagatla@gmail.com>
-M:	Maxime Coquelin <maxime.coquelin@st.com>
 M:	Patrice Chotard <patrice.chotard@st.com>
 L:	linux-arm-kernel@lists.infradead.org (moderated for non-subscribers)
 L:	kernel@stlinux.com
@@ -1741,6 +1739,7 @@ F:	drivers/ata/ahci_st.c
 
 ARM/STM32 ARCHITECTURE
 M:	Maxime Coquelin <mcoquelin.stm32@gmail.com>
+M:	Alexandre Torgue <alexandre.torgue@st.com>
 L:	linux-arm-kernel@lists.infradead.org (moderated for non-subscribers)
 S:	Maintained
 T:	git git://git.kernel.org/pub/scm/linux/kernel/git/mcoquelin/stm32.git
@@ -4502,7 +4501,7 @@ S:	Orphan
 F:	fs/efs/
 
 EHEA (IBM pSeries eHEA 10Gb ethernet adapter) DRIVER
-M:	Thadeu Lima de Souza Cascardo <cascardo@linux.vnet.ibm.com>
+M:	Douglas Miller <dougmill@linux.vnet.ibm.com>
 L:	netdev@vger.kernel.org
 S:	Maintained
 F:	drivers/net/ethernet/ibm/ehea/
@@ -7518,6 +7517,7 @@ Q:	http://patchwork.ozlabs.org/project/linux-mtd/list/
 T:	git git://git.infradead.org/linux-mtd.git
 T:	git git://git.infradead.org/l2-mtd.git
 S:	Maintained
+F:	Documentation/devicetree/bindings/mtd/
 F:	drivers/mtd/
 F:	include/linux/mtd/
 F:	include/uapi/mtd/
@@ -12663,11 +12663,10 @@ F:	arch/x86/xen/*swiotlb*
 F:	drivers/xen/*swiotlb*
 
 XFS FILESYSTEM
-P:	Silicon Graphics Inc
 M:	Dave Chinner <david@fromorbit.com>
-M:	xfs@oss.sgi.com
-L:	xfs@oss.sgi.com
-W:	http://oss.sgi.com/projects/xfs
+M:	linux-xfs@vger.kernel.org
+L:	linux-xfs@vger.kernel.org
+W:	http://xfs.org/
 T:	git git://git.kernel.org/pub/scm/linux/kernel/git/dgc/linux-xfs.git
 S:	Supported
 F:	Documentation/filesystems/xfs.txt

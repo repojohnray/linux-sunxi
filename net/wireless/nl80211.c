@@ -3532,15 +3532,15 @@ static int nl80211_start_ap(struct sk_buff *skb, struct genl_info *info)
 		params.smps_mode = NL80211_SMPS_OFF;
 	}
 
+	params.pbss = nla_get_flag(info->attrs[NL80211_ATTR_PBSS]);
+	if (params.pbss && !rdev->wiphy.bands[NL80211_BAND_60GHZ])
+		return -EOPNOTSUPP;
+
 	if (info->attrs[NL80211_ATTR_ACL_POLICY]) {
 		params.acl = parse_acl_data(&rdev->wiphy, info);
 		if (IS_ERR(params.acl))
 			return PTR_ERR(params.acl);
 	}
-
-	params.pbss = nla_get_flag(info->attrs[NL80211_ATTR_PBSS]);
-	if (params.pbss && !rdev->wiphy.bands[NL80211_BAND_60GHZ])
-		return -EOPNOTSUPP;
 
 	wdev_lock(wdev);
 	err = rdev_start_ap(rdev, dev, &params);
@@ -6851,7 +6851,7 @@ static int nl80211_channel_switch(struct sk_buff *skb, struct genl_info *info)
 
 		params.n_counter_offsets_presp = len / sizeof(u16);
 		if (rdev->wiphy.max_num_csa_counters &&
-		    (params.n_counter_offsets_beacon >
+		    (params.n_counter_offsets_presp >
 		     rdev->wiphy.max_num_csa_counters))
 			return -EINVAL;
 

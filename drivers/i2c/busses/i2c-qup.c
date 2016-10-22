@@ -1268,6 +1268,8 @@ static int qup_i2c_xfer_v2(struct i2c_adapter *adap,
 		}
 	}
 
+	idx = 0;
+
 	do {
 		if (msgs[idx].len == 0) {
 			ret = -EINVAL;
@@ -1608,7 +1610,8 @@ static int qup_i2c_pm_resume_runtime(struct device *device)
 #ifdef CONFIG_PM_SLEEP
 static int qup_i2c_suspend(struct device *device)
 {
-	qup_i2c_pm_suspend_runtime(device);
+	if (!pm_runtime_suspended(device))
+		return qup_i2c_pm_suspend_runtime(device);
 	return 0;
 }
 

@@ -3230,6 +3230,7 @@ static inline void napi_free_frags(struct napi_struct *napi)
 	napi->skb = NULL;
 }
 
+bool netdev_is_rx_handler_busy(struct net_device *dev);
 int netdev_rx_handler_register(struct net_device *dev,
 			       rx_handler_func_t *rx_handler,
 			       void *rx_handler_data);
@@ -4167,6 +4168,13 @@ static inline bool netif_is_rxfh_configured(const struct net_device *dev)
 static inline void netif_keep_dst(struct net_device *dev)
 {
 	dev->priv_flags &= ~(IFF_XMIT_DST_RELEASE | IFF_XMIT_DST_RELEASE_PERM);
+}
+
+/* return true if dev can't cope with mtu frames that need vlan tag insertion */
+static inline bool netif_reduces_vlan_mtu(struct net_device *dev)
+{
+	/* TODO: reserve and use an additional IFF bit, if we get more users */
+	return dev->priv_flags & IFF_MACSEC;
 }
 
 extern struct pernet_operations __net_initdata loopback_net_ops;
