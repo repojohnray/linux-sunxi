@@ -55,8 +55,9 @@
 	aliases {
 		serial0 = &uart0;
 		/* ethernet0 is the H3 emac, defined in sun8i-h3.dtsi */
-		ethernet1 = &rtl8189;
 		ethernet0 = &emac;
+		ethernet1 = &rtl8189;
+		lcd0 = &lcd0;
 	};
 
 	chosen {
@@ -106,13 +107,29 @@
 	};
 };
 
+&de {
+	status = "okay";
+};
+
 &ehci1 {
+	status = "okay";
+};
+
+&hdmi {
+	status = "okay";
+};
+
+&i2s2 {
 	status = "okay";
 };
 
 &ir {
 	pinctrl-names = "default";
 	pinctrl-0 = <&ir_pins_a>;
+	status = "okay";
+};
+
+&lcd0 {
 	status = "okay";
 };
 
