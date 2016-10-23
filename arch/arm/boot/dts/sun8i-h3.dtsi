@@ -668,8 +668,8 @@
 		hdmi: hdmi@01ee0000 {
 			compatible = "allwinner,sun8i-h3-hdmi";
 			reg = <0x01ee0000 0x20000>;
-			clocks = <&ccu CLK_HDMI>, <&ccu CLK_HDMI_DDC>;
-			clock-names = "clock", "ddc-clock";
+			clocks = <&ccu CLK_BUS_HDMI>, <&ccu CLK_HDMI>, <&ccu CLK_HDMI_DDC>;
+			clock-names = "gate", "clock", "ddc-clock";
 			resets = <&ccu RST_BUS_HDMI0>, <&ccu RST_BUS_HDMI1>;
 			reset-names = "hdmi0", "hdmi1";
 			status = "disabled";
