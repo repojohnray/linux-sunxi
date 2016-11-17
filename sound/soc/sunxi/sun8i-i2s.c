@@ -142,7 +142,7 @@ struct priv {
 static const struct of_device_id sun8i_i2s_of_match[] = {
 	{ .compatible = "allwinner,sun8i-a83t-i2s",
 				.data = (void *) SOC_A83T },
-	{ .compatible = "allwinner,sun8i-h3-i2s",
+	{ .compatible = "allwinner,sun8i-h3-i2s2",
 				.data = (void *) SOC_H3 },
 	{ }
 };
@@ -647,7 +647,7 @@ static int sun8i_i2s_dev_probe(struct platform_device *pdev)
 		goto err_register;
 	}
 
-	priv->dma_data.maxburst = priv->type == SOC_A83T ? 8 : 4;
+	priv->dma_data.maxburst = priv->type == SOC_A83T ? 8 : 8;
 	priv->dma_data.addr = mem->start + I2S_TXFIFO;
 	priv->dma_data.addr_width = DMA_SLAVE_BUSWIDTH_2_BYTES;
 

@@ -575,7 +575,7 @@
 		};
 
 		i2s2: i2s@1c22800 {
-			compatible = "allwinner,sun8i-h3-i2s";
+			compatible = "allwinner,sun8i-h3-i2s2";
 			reg = <0x01c22800 0x60>;
 			clocks = <&ccu CLK_BUS_I2S2>, <&ccu CLK_I2S2>;
 			clock-names = "apb", "mod";
