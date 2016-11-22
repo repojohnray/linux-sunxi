@@ -75,6 +75,7 @@
 	#define I2S_FCTL_TXTL(v)	((v) << 12)
 	#define I2S_FCTL_TXIM		BIT(2)
 
+#define I2S_FSTA    		0x18
 #define I2S_INT    		0x1c
 	#define I2S_INT_TXDRQEN		BIT(7)
 
@@ -451,6 +452,31 @@ static int sun8i_i2s_trigger(struct snd_pcm_substream *substream,
 	default:
 		return -EINVAL;
 	}
+	{
+	/* COOPS DEBUGGING FOR NOW */
+	u32 reg_val = 0;
+
+	printk("I2S Command State %d Audio Clock is %lu\n", cmd, clk_get_rate(priv->clk));
+	reg_val = readl(priv->mmio + I2S_CTL);
+	printk("SUN8I_I2S_CTRL_REG 0x%x\n", reg_val);
+	reg_val = readl(priv->mmio + I2S_FAT0);
+	printk("SUN8I_I2S_FMT0_REG 0x%x\n", reg_val);
+	reg_val = readl(priv->mmio + I2S_FAT1);
+	printk("SUN8I_I2S_FMT1_REG 0x%x\n", reg_val);
+	reg_val = readl(priv->mmio + I2S_FCTL);
+	printk("SUN8I_I2S_FIFO_CTRL_REG 0x%x\n", reg_val);
+	reg_val = readl(priv->mmio + I2S_CLKD);
+	printk("SUN8I_I2S_CLKD_REG 0x%x\n", reg_val);
+	reg_val = readl(priv->mmio + I2S_FSTA);
+	printk("SUN8I_I2S_FIFO_STA_REG 0x%x\n", reg_val);
+	reg_val = readl(priv->mmio + I2S_TXCHCFG_H3);
+	printk("SUN8I_I2S_TX_CHAN_CFG_REG 0x%x\n", reg_val);
+	reg_val = readl(priv->mmio + I2S_TX0CHSEL_H3);
+	printk("SUN8I_I2S_TX_CHAN_SEL_REG 0x%x\n", reg_val);
+	reg_val = readl(priv->mmio + I2S_TX0CHMAP_H3);
+	printk("SUN8I_I2S_TX_CHAN_MAP_REG 0x%x\n", reg_val);
+	}
+
 
 	return 0;
 }
