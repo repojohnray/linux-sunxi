@@ -116,7 +116,7 @@
 		#sound-dai-cells = <0>;
 		compatible = "linux,spdif-dit";
 	};
-
+#if 0
         pcm5102: pcm510x {
                 compatible = "ti,pcm5102a";
                 pcm510x,format = "i2s";
@@ -135,7 +135,35 @@
 			sound-dai = <&pcm5102>;
 		};
 	};
+#else
+	sound {
+		compatible = "simple-audio-card";
+		simple-audio-card,format = "i2s";
+		simple-audio-card,routing =
+			"Headphone Jack", "VOUTLHP",
+			"Headphone Jack", "VOUTRHP",
+			"Line Out Jack", "VOUTL",
+			"Line Out Jack", "VOUTR",
+			"VINM", "Mic Jack",
+			"VINL", "Line In Jack",
+			"VINR", "Line In Jack";
+		simple-audio-card,widgets =
+			"Headphone", "Headphone Jack",
+			"Line", "Line In Jack",
+			"Line", "Line Out Jack",
+			"Microphone", "Mic Jack";
 
+		//simple-audio-card,mclk-fs = <256>; // as it's not supported in dai codec driver, see asoc_simple_card_hw_params() in sound/soc/generic/simple-card.c
+
+		simple-audio-card,cpu {
+			sound-dai = <&i2s0>;
+		};
+
+		simple-audio-card,codec {
+			sound-dai = <&ext_codec>;
+		};
+	};
+#endif
 	wifi_pwrseq: wifi_pwrseq {
 		compatible = "mmc-pwrseq-simple";
 		pinctrl-names = "default";
@@ -164,6 +192,26 @@
 
 &hdmi {
 	status = "okay";
+};
+
+&i2c0 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&i2c0_pins>;
+	status = "okay";
+
+	/* added for test with I2S waveshare codec board based on UDA1380 */
+	ext_codec: uda1380@18 {
+		#sound-dai-cells = <0>; /* added for dmesg err: "could not get #sound-dai-cells for " */
+		compatible = "nxp,uda1380";
+		reg = <0x18>;
+		/* reset-gpio = <&pio 7 3 GPIO_ACTIVE_HIGH>; */
+		/*
+		 * commented out so uda1380_probe move forward..
+		 * otherwise get: asoc-simple-card sound: ASoC: failed to instantiate card -16
+		 * power-gpio = <&pio 7 11 GPIO_ACTIVE_HIGH>;
+		 */
+		dac-clk = <1>; // SYSCLK=0, WSPLL=1
+	};
 };
 
 &i2s0 {
