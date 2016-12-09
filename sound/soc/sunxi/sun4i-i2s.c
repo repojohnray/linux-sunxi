@@ -551,7 +551,6 @@ static struct snd_soc_dai_driver sun4i_i2s_dai = {
 		.rates = SNDRV_PCM_RATE_8000_192000,
 		.formats = SNDRV_PCM_FMTBIT_S16_LE,
 	},
-	.ops = &sun4i_i2s_dai_ops,
 	.symmetric_rates = 1,
 };
 
@@ -735,6 +734,8 @@ static int sun4i_i2s_probe(struct platform_device *pdev)
 			goto err_pm_disable;
 	}
 
+	/* Register ops with dai */
+	sun4i_i2s_dai.ops = quirks->ops;
 	ret = devm_snd_soc_register_component(&pdev->dev,
 					      &sun4i_i2s_component,
 					      &sun4i_i2s_dai, 1);
@@ -774,12 +775,14 @@ static int sun4i_i2s_remove(struct platform_device *pdev)
 static const struct sun4i_i2s_quirks sun4i_a10_i2s_quirks = {
 	.reg_dac_txdata	= SUN4I_I2S_FIFO_TX_REG,
 	.sun4i_i2s_regmap = &sun4i_i2s_regmap_config,
+	.ops = &sun4i_i2s_dai_ops,
 };
 
 static const struct sun4i_i2s_quirks sun6i_a31_i2s_quirks = {
 	.reg_dac_txdata	= SUN4I_I2S_FIFO_TX_REG,
 	.has_reset	= true,
 	.sun4i_i2s_regmap = &sun4i_i2s_regmap_config,
+	.ops = &sun4i_i2s_dai_ops,
 };
 
 static const struct of_device_id sun4i_i2s_match[] = {
