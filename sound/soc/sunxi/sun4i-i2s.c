@@ -14,9 +14,11 @@
 #include <linux/clk.h>
 #include <linux/dmaengine.h>
 #include <linux/module.h>
+#include <linux/of_device.h>
 #include <linux/platform_device.h>
 #include <linux/pm_runtime.h>
 #include <linux/regmap.h>
+#include <linux/reset.h>
 
 #include <sound/dmaengine_pcm.h>
 #include <sound/pcm_params.h>
@@ -92,6 +94,7 @@ struct sun4i_i2s {
 	struct clk	*bus_clk;
 	struct clk	*mod_clk;
 	struct regmap	*regmap;
+	struct reset_control *rst;
 
 	unsigned int	mclk_freq;
 
@@ -102,6 +105,11 @@ struct sun4i_i2s {
 struct sun4i_i2s_clk_div {
 	u8	div;
 	u8	val;
+};
+
+struct sun4i_i2s_quirks {
+	unsigned int reg_dac_txdata;	/* TX FIFO offset for DMA config */
+	bool has_reset;
 };
 
 static const struct sun4i_i2s_clk_div sun4i_i2s_bclk_div[] = {
@@ -655,6 +663,7 @@ static int sun4i_i2s_probe(struct platform_device *pdev)
 {
 	struct sun4i_i2s *i2s;
 	struct resource *res;
+	const struct sun4i_i2s_quirks *quirks;
 	void __iomem *regs;
 	int irq, ret;
 
@@ -680,6 +689,12 @@ static int sun4i_i2s_probe(struct platform_device *pdev)
 		return PTR_ERR(i2s->bus_clk);
 	}
 
+	quirks = of_device_get_match_data(&pdev->dev);
+	if (quirks == NULL) {
+		dev_err(&pdev->dev, "Failed to determine the quirks to use\n");
+		return -ENODEV;
+	}
+
 	i2s->regmap = devm_regmap_init_mmio(&pdev->dev, regs,
 					    &sun4i_i2s_regmap_config);
 	if (IS_ERR(i2s->regmap)) {
@@ -692,12 +707,24 @@ static int sun4i_i2s_probe(struct platform_device *pdev)
 		dev_err(&pdev->dev, "Can't get our mod clock\n");
 		return PTR_ERR(i2s->mod_clk);
 	}
+
 	
-	i2s->playback_dma_data.addr = res->start + SUN4I_I2S_FIFO_TX_REG;
-	i2s->playback_dma_data.maxburst = 4;
+	i2s->playback_dma_data.addr = res->start + quirks->reg_dac_txdata;
+	i2s->playback_dma_data.maxburst = 8;
 
 	i2s->capture_dma_data.addr = res->start + SUN4I_I2S_FIFO_RX_REG;
-	i2s->capture_dma_data.maxburst = 4;
+	i2s->capture_dma_data.maxburst = 8;
+
+	if (quirks->has_reset) {
+		i2s->rst = devm_reset_control_get_optional(&pdev->dev, NULL);
+		if (IS_ERR(i2s->rst) && PTR_ERR(i2s->rst) == -EPROBE_DEFER) {
+			ret = -EPROBE_DEFER;
+			dev_err(&pdev->dev, "Failed to get reset: %d\n", ret);
+			goto err_pm_disable;
+		}
+		if (!IS_ERR(i2s->rst))
+			reset_control_deassert(i2s->rst);
+	}
 
 	pm_runtime_enable(&pdev->dev);
 	if (!pm_runtime_enabled(&pdev->dev)) {
@@ -742,8 +769,15 @@ static int sun4i_i2s_remove(struct platform_device *pdev)
 	return 0;
 }
 
+static const struct sun4i_i2s_quirks sun4i_a10_i2s_quirks = {
+	.reg_dac_txdata	= SUN4I_I2S_FIFO_TX_REG,
+};
+
 static const struct of_device_id sun4i_i2s_match[] = {
-	{ .compatible = "allwinner,sun4i-a10-i2s", },
+	{
+		.compatible = "allwinner,sun4i-a10-i2s",
+		.data = &sun4i_a10_i2s_quirks,
+	},
 	{}
 };
 MODULE_DEVICE_TABLE(of, sun4i_i2s_match);
