@@ -773,10 +773,19 @@ static const struct sun4i_i2s_quirks sun4i_a10_i2s_quirks = {
 	.reg_dac_txdata	= SUN4I_I2S_FIFO_TX_REG,
 };
 
+static const struct sun4i_i2s_quirks sun6i_a31_i2s_quirks = {
+	.reg_dac_txdata	= SUN4I_I2S_FIFO_TX_REG,
+	.has_reset	= true,
+};
+
 static const struct of_device_id sun4i_i2s_match[] = {
 	{
 		.compatible = "allwinner,sun4i-a10-i2s",
 		.data = &sun4i_a10_i2s_quirks,
+	},
+	{
+		.compatible = "allwinner,sun6i-a31-i2s",
+		.data = &sun6i_a31_i2s_quirks,
 	},
 	{}
 };
