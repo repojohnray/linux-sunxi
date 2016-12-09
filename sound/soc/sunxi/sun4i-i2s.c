@@ -110,6 +110,8 @@ struct sun4i_i2s_clk_div {
 struct sun4i_i2s_quirks {
 	unsigned int reg_dac_txdata;	/* TX FIFO offset for DMA config */
 	bool has_reset;
+	const struct regmap_config *sun4i_i2s_regmap;
+	const struct snd_soc_dai_ops *ops;
 };
 
 static const struct sun4i_i2s_clk_div sun4i_i2s_bclk_div[] = {
@@ -696,7 +698,7 @@ static int sun4i_i2s_probe(struct platform_device *pdev)
 	}
 
 	i2s->regmap = devm_regmap_init_mmio(&pdev->dev, regs,
-					    &sun4i_i2s_regmap_config);
+					    quirks->sun4i_i2s_regmap);
 	if (IS_ERR(i2s->regmap)) {
 		dev_err(&pdev->dev, "Regmap initialisation failed\n");
 		return PTR_ERR(i2s->regmap);
@@ -771,11 +773,13 @@ static int sun4i_i2s_remove(struct platform_device *pdev)
 
 static const struct sun4i_i2s_quirks sun4i_a10_i2s_quirks = {
 	.reg_dac_txdata	= SUN4I_I2S_FIFO_TX_REG,
+	.sun4i_i2s_regmap = &sun4i_i2s_regmap_config,
 };
 
 static const struct sun4i_i2s_quirks sun6i_a31_i2s_quirks = {
 	.reg_dac_txdata	= SUN4I_I2S_FIFO_TX_REG,
 	.has_reset	= true,
+	.sun4i_i2s_regmap = &sun4i_i2s_regmap_config,
 };
 
 static const struct of_device_id sun4i_i2s_match[] = {
