@@ -501,6 +501,7 @@ static void de2_plane_update(struct priv *priv, struct lcd *lcd,
 	}
 
 	gem = drm_fb_cma_get_gem_obj(fb, 0);
+        printk(KERN_DEBUG "drm_fb_cma_get_gem_obj %08x %08d\n", gem->paddr, size);
 
 	ui_sel = alpha_glob = 0;
 
