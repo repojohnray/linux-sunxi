@@ -17,9 +17,8 @@
  * with this program; if not, write to the Free Software Foundation, Inc.,
  * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-
+#include <linux/kernel.h>
 #include <linux/clk.h>
-#include <linux/delay.h>
 #include <linux/init.h>
 #include <linux/io.h>
 #include <linux/irq.h>

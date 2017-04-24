@@ -2885,8 +2885,6 @@ static void vlv_detach_power_sequencer(struct intel_dp *intel_dp)
 	enum pipe pipe = intel_dp->pps_pipe;
 	i915_reg_t pp_on_reg = PP_ON_DELAYS(pipe);
 
-	WARN_ON(intel_dp->active_pipe != INVALID_PIPE);
-
 	if (WARN_ON(pipe != PIPE_A && pipe != PIPE_B))
 		return;
 

@@ -1169,10 +1169,9 @@ static int ext4_finish_convert_inline_dir(handle_t *handle,
 	set_buffer_uptodate(dir_block);
 	err = ext4_handle_dirty_dirent_node(handle, inode, dir_block);
 	if (err)
-		goto out;
+		return err;
 	set_buffer_verified(dir_block);
-out:
-	return err;
+	return ext4_mark_inode_dirty(handle, inode);
 }
 
 static int ext4_convert_inline_data_nolock(handle_t *handle,
@@ -1322,6 +1321,7 @@ int ext4_try_add_inline_entry(handle_t *handle, struct ext4_filename *fname,
 out:
 	ext4_write_unlock_xattr(dir, &no_expand);
 	ext4_mark_inode_dirty(handle, dir);
+	ext4_write_unlock_xattr(dir, &no_expand);
 	brelse(iloc.bh);
 	return ret;
 }
@@ -1720,8 +1720,6 @@ int ext4_delete_inline_entry(handle_t *handle,
 	ext4_show_inline_dir(dir, iloc.bh, inline_start, inline_size);
 out:
 	ext4_write_unlock_xattr(dir, &no_expand);
-	if (likely(err == 0))
-		err = ext4_mark_inode_dirty(handle, dir);
 	brelse(iloc.bh);
 	if (err != -ENOENT)
 		ext4_std_error(dir->i_sb, err);
@@ -1909,7 +1907,7 @@ out:
 int ext4_inline_data_truncate(struct inode *inode, int *has_inline)
 {
 	handle_t *handle;
-	int inline_size, value_len, needed_blocks, no_expand, err = 0;
+	int inline_size, value_len, needed_blocks, no_expand;
 	size_t i_size;
 	void *value = NULL;
 	struct ext4_xattr_ibody_find is = {

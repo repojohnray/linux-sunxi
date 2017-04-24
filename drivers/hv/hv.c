@@ -52,11 +52,103 @@ int hv_init(void)
 	if (!hv_is_hypercall_page_setup())
 		return -ENOTSUPP;
 
-	hv_context.cpu_context = alloc_percpu(struct hv_per_cpu_context);
-	if (!hv_context.cpu_context)
-		return -ENOMEM;
+	/*
+	 * Write our OS ID.
+	 */
+	hv_context.guestid = generate_guest_id(0, LINUX_VERSION_CODE, 0);
+	wrmsrl(HV_X64_MSR_GUEST_OS_ID, hv_context.guestid);
+
+	/* See if the hypercall page is already set */
+	rdmsrl(HV_X64_MSR_HYPERCALL, hypercall_msr.as_uint64);
+
+	virtaddr = __vmalloc(PAGE_SIZE, GFP_KERNEL, PAGE_KERNEL_RX);
+
+	if (!virtaddr)
+		goto cleanup;
+
+	hypercall_msr.enable = 1;
+
+	hypercall_msr.guest_physical_address = vmalloc_to_pfn(virtaddr);
+	wrmsrl(HV_X64_MSR_HYPERCALL, hypercall_msr.as_uint64);
+
+	/* Confirm that hypercall page did get setup. */
+	hypercall_msr.as_uint64 = 0;
+	rdmsrl(HV_X64_MSR_HYPERCALL, hypercall_msr.as_uint64);
+
+	if (!hypercall_msr.enable)
+		goto cleanup;
+
+	hv_context.hypercall_page = virtaddr;
+
+#ifdef CONFIG_X86_64
+	if (ms_hyperv.features & HV_X64_MSR_REFERENCE_TSC_AVAILABLE) {
+		union hv_x64_msr_hypercall_contents tsc_msr;
+		void *va_tsc;
+
+		va_tsc = __vmalloc(PAGE_SIZE, GFP_KERNEL, PAGE_KERNEL);
+		if (!va_tsc)
+			goto cleanup;
+		hv_context.tsc_page = va_tsc;
+
+		rdmsrl(HV_X64_MSR_REFERENCE_TSC, tsc_msr.as_uint64);
 
 	return 0;
+
+cleanup:
+	if (virtaddr) {
+		if (hypercall_msr.enable) {
+			hypercall_msr.as_uint64 = 0;
+			wrmsrl(HV_X64_MSR_HYPERCALL, hypercall_msr.as_uint64);
+		}
+
+		vfree(virtaddr);
+	}
+
+	return -ENOTSUPP;
+}
+
+/*
+ * hv_cleanup - Cleanup routine.
+ *
+ * This routine is called normally during driver unloading or exiting.
+ */
+void hv_cleanup(bool crash)
+{
+	union hv_x64_msr_hypercall_contents hypercall_msr;
+
+	/* Reset our OS id */
+	wrmsrl(HV_X64_MSR_GUEST_OS_ID, 0);
+
+	if (hv_context.hypercall_page) {
+		hypercall_msr.as_uint64 = 0;
+		wrmsrl(HV_X64_MSR_HYPERCALL, hypercall_msr.as_uint64);
+		if (!crash)
+			vfree(hv_context.hypercall_page);
+		hv_context.hypercall_page = NULL;
+	}
+
+#ifdef CONFIG_X86_64
+	/*
+	 * Cleanup the TSC page based CS.
+	 */
+	if (ms_hyperv.features & HV_X64_MSR_REFERENCE_TSC_AVAILABLE) {
+		/*
+		 * Crash can happen in an interrupt context and unregistering
+		 * a clocksource is impossible and redundant in this case.
+		 */
+		if (!oops_in_progress) {
+			clocksource_change_rating(&hyperv_cs_tsc, 10);
+			clocksource_unregister(&hyperv_cs_tsc);
+		}
+
+		hypercall_msr.as_uint64 = 0;
+		wrmsrl(HV_X64_MSR_REFERENCE_TSC, hypercall_msr.as_uint64);
+		if (!crash) {
+			vfree(hv_context.tsc_page);
+			hv_context.tsc_page = NULL;
+		}
+	}
+#endif
 }
 
 /*
@@ -152,8 +244,12 @@ int hv_synic_alloc(void)
 	}
 
 	for_each_present_cpu(cpu) {
-		struct hv_per_cpu_context *hv_cpu
-			= per_cpu_ptr(hv_context.cpu_context, cpu);
+		hv_context.event_dpc[cpu] = kmalloc(size, GFP_ATOMIC);
+		if (hv_context.event_dpc[cpu] == NULL) {
+			pr_err("Unable to allocate event dpc\n");
+			goto err;
+		}
+		tasklet_init(hv_context.event_dpc[cpu], vmbus_on_event, cpu);
 
 		memset(hv_cpu, 0, sizeof(*hv_cpu));
 		tasklet_init(&hv_cpu->msg_dpc,
@@ -186,7 +282,7 @@ int hv_synic_alloc(void)
 			goto err;
 		}
 
-		INIT_LIST_HEAD(&hv_cpu->chan_list);
+		INIT_LIST_HEAD(&hv_context.percpu_list[cpu]);
 	}
 
 	return 0;
@@ -212,6 +308,8 @@ void hv_synic_free(void)
 	}
 
 	kfree(hv_context.hv_numa_map);
+	for_each_present_cpu(cpu)
+		hv_synic_free_cpu(cpu);
 }
 
 /*

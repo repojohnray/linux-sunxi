@@ -763,8 +763,8 @@ xfs_bmap_extents_to_btree(
 		args.type = XFS_ALLOCTYPE_START_BNO;
 		args.fsbno = XFS_INO_TO_FSB(mp, ip->i_ino);
 	} else if (dfops->dop_low) {
-try_another_ag:
 		args.type = XFS_ALLOCTYPE_START_BNO;
+try_another_ag:
 		args.fsbno = *firstblock;
 	} else {
 		args.type = XFS_ALLOCTYPE_NEAR_BNO;
@@ -790,17 +790,19 @@ try_another_ag:
 	if (xfs_sb_version_hasreflink(&cur->bc_mp->m_sb) &&
 	    args.fsbno == NULLFSBLOCK &&
 	    args.type == XFS_ALLOCTYPE_NEAR_BNO) {
-		dfops->dop_low = true;
+		args.type = XFS_ALLOCTYPE_FIRST_AG;
 		goto try_another_ag;
+	}
+	if (WARN_ON_ONCE(args.fsbno == NULLFSBLOCK)) {
+		xfs_iroot_realloc(ip, -1, whichfork);
+		xfs_btree_del_cursor(cur, XFS_BTREE_ERROR);
+		return -ENOSPC;
 	}
 	/*
 	 * Allocation can't fail, the space was reserved.
 	 */
-	ASSERT(args.fsbno != NULLFSBLOCK);
 	ASSERT(*firstblock == NULLFSBLOCK ||
-	       args.agno == XFS_FSB_TO_AGNO(mp, *firstblock) ||
-	       (dfops->dop_low &&
-		args.agno > XFS_FSB_TO_AGNO(mp, *firstblock)));
+	       args.agno >= XFS_FSB_TO_AGNO(mp, *firstblock));
 	*firstblock = cur->bc_private.b.firstblock = args.fsbno;
 	cur->bc_private.b.allocated++;
 	ip->i_d.di_nblocks++;
@@ -3822,17 +3824,13 @@ xfs_bmap_btalloc(
 		 * the first block that was allocated.
 		 */
 		ASSERT(*ap->firstblock == NULLFSBLOCK ||
-		       XFS_FSB_TO_AGNO(mp, *ap->firstblock) ==
-		       XFS_FSB_TO_AGNO(mp, args.fsbno) ||
-		       (ap->dfops->dop_low &&
-			XFS_FSB_TO_AGNO(mp, *ap->firstblock) <
-			XFS_FSB_TO_AGNO(mp, args.fsbno)));
+		       XFS_FSB_TO_AGNO(mp, *ap->firstblock) <=
+		       XFS_FSB_TO_AGNO(mp, args.fsbno));
 
 		ap->blkno = args.fsbno;
 		if (*ap->firstblock == NULLFSBLOCK)
 			*ap->firstblock = args.fsbno;
-		ASSERT(nullfb || fb_agno == args.agno ||
-		       (ap->dfops->dop_low && fb_agno < args.agno));
+		ASSERT(nullfb || fb_agno <= args.agno);
 		ap->length = args.len;
 		if (!(ap->flags & XFS_BMAPI_COWFORK))
 			ap->ip->i_d.di_nblocks += args.len;
@@ -4156,6 +4154,19 @@ xfs_bmapi_read(
 	return 0;
 }
 
+/*
+ * Add a delayed allocation extent to an inode. Blocks are reserved from the
+ * global pool and the extent inserted into the inode in-core extent tree.
+ *
+ * On entry, got refers to the first extent beyond the offset of the extent to
+ * allocate or eof is specified if no such extent exists. On return, got refers
+ * to the extent record that was inserted to the inode fork.
+ *
+ * Note that the allocated extent may have been merged with contiguous extents
+ * during insertion into the inode fork. Thus, got does not reflect the current
+ * state of the inode fork on return. If necessary, the caller can use lastx to
+ * look up the updated record in the inode fork.
+ */
 int
 xfs_bmapi_reserve_delalloc(
 	struct xfs_inode	*ip,
@@ -4242,13 +4253,8 @@ xfs_bmapi_reserve_delalloc(
 	got->br_startblock = nullstartblock(indlen);
 	got->br_blockcount = alen;
 	got->br_state = XFS_EXT_NORM;
-	xfs_bmap_add_extent_hole_delay(ip, whichfork, lastx, got);
 
-	/*
-	 * Update our extent pointer, given that xfs_bmap_add_extent_hole_delay
-	 * might have merged it into one of the neighbouring ones.
-	 */
-	xfs_bmbt_get_all(xfs_iext_get_ext(ifp, *lastx), got);
+	xfs_bmap_add_extent_hole_delay(ip, whichfork, lastx, got);
 
 	/*
 	 * Tag the inode if blocks were preallocated. Note that COW fork
@@ -4260,10 +4266,6 @@ xfs_bmapi_reserve_delalloc(
 	if (whichfork == XFS_COW_FORK && (prealloc || aoff < off || alen > len))
 		xfs_inode_set_cowblocks_tag(ip);
 
-	ASSERT(got->br_startoff <= aoff);
-	ASSERT(got->br_startoff + got->br_blockcount >= aoff + alen);
-	ASSERT(isnullstartblock(got->br_startblock));
-	ASSERT(got->br_state == XFS_EXT_NORM);
 	return 0;
 
 out_unreserve_blocks:
@@ -4754,13 +4756,9 @@ error0:
 	if (bma.cur) {
 		if (!error) {
 			ASSERT(*firstblock == NULLFSBLOCK ||
-			       XFS_FSB_TO_AGNO(mp, *firstblock) ==
+			       XFS_FSB_TO_AGNO(mp, *firstblock) <=
 			       XFS_FSB_TO_AGNO(mp,
-				       bma.cur->bc_private.b.firstblock) ||
-			       (dfops->dop_low &&
-				XFS_FSB_TO_AGNO(mp, *firstblock) <
-				XFS_FSB_TO_AGNO(mp,
-					bma.cur->bc_private.b.firstblock)));
+				       bma.cur->bc_private.b.firstblock));
 			*firstblock = bma.cur->bc_private.b.firstblock;
 		}
 		xfs_btree_del_cursor(bma.cur,

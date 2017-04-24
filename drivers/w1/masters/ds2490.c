@@ -909,10 +909,11 @@ static void ds9490r_write_block(void *data, const u8 *buf, int len)
 	if (len <= 0)
 		return;
 
-	tbuf = kmemdup(buf, len, GFP_KERNEL);
+	tbuf = kmalloc(len, GFP_KERNEL);
 	if (!tbuf)
 		return;
 
+	memcpy(tbuf, buf, len);
 	ds_write_block(dev, tbuf, len);
 
 	kfree(tbuf);

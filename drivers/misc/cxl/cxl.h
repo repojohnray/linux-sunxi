@@ -421,6 +421,9 @@ struct cxl_afu {
 	/* Used to block access to AFU config space while deconfigured */
 	struct rw_semaphore configured_rwsem;
 
+	/* -1: AFU deconfigured/locked, >= 0: number of readers */
+	atomic_t configured_state;
+
 	/* AFU error buffer fields and bin attribute for sysfs */
 	u64 eb_len, eb_offset;
 	struct bin_attribute attr_eb;

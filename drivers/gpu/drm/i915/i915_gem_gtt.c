@@ -794,7 +794,7 @@ static bool gen8_ppgtt_clear_pd(struct i915_address_space *vm,
 			pde_vaddr = kmap_px(pd);
 			pde_vaddr[pde] = scratch_pde;
 			kunmap_px(ppgtt, pde_vaddr);
-			free_pt(vm->i915, pt);
+			free_pt(to_i915(vm->dev), pt);
 		}
 	}
 
@@ -822,8 +822,12 @@ static bool gen8_ppgtt_clear_pdp(struct i915_address_space *vm,
 
 		if (gen8_ppgtt_clear_pd(vm, pd, start, length)) {
 			__clear_bit(pdpe, pdp->used_pdpes);
-			gen8_setup_pdpe(ppgtt, pdp, vm->scratch_pd, pdpe);
-			free_pd(vm->i915, pd);
+			if (USES_FULL_48BIT_PPGTT(dev_priv)) {
+				pdpe_vaddr = kmap_px(pdp);
+				pdpe_vaddr[pdpe] = scratch_pdpe;
+				kunmap_px(ppgtt, pdpe_vaddr);
+			}
+			free_pd(to_i915(vm->dev), pd);
 		}
 	}
 
@@ -844,6 +848,7 @@ static void gen8_ppgtt_clear_pml4(struct i915_address_space *vm,
 				  uint64_t start,
 				  uint64_t length)
 {
+	struct drm_i915_private *dev_priv = to_i915(vm->dev);
 	struct i915_hw_ppgtt *ppgtt = i915_vm_to_ppgtt(vm);
 	struct i915_page_directory_pointer *pdp;
 	uint64_t pml4e;
@@ -856,8 +861,10 @@ static void gen8_ppgtt_clear_pml4(struct i915_address_space *vm,
 
 		if (gen8_ppgtt_clear_pdp(vm, pdp, start, length)) {
 			__clear_bit(pml4e, pml4->used_pml4es);
-			gen8_setup_pml4e(ppgtt, pml4, vm->scratch_pdp, pml4e);
-			free_pdp(vm->i915, pdp);
+			pml4e_vaddr = kmap_px(pml4);
+			pml4e_vaddr[pml4e] = scratch_pml4e;
+			kunmap_px(ppgtt, pml4e_vaddr);
+			free_pdp(dev_priv, pdp);
 		}
 	}
 }

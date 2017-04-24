@@ -1641,7 +1641,7 @@ static int ttm_bo_swapout(struct ttm_mem_shrink *shrink)
 	    container_of(shrink, struct ttm_bo_global, shrink);
 	struct ttm_buffer_object *bo;
 	int ret = -EBUSY;
-	unsigned i;
+	int put_count;
 
 	spin_lock(&glob->lru_lock);
 	for (i = 0; i < TTM_MAX_BO_PRIORITY; ++i) {

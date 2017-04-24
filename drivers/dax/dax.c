@@ -426,6 +426,7 @@ static int __dax_dev_pte_fault(struct dax_dev *dax_dev, struct vm_fault *vmf)
 	int rc = VM_FAULT_SIGBUS;
 	phys_addr_t phys;
 	pfn_t pfn;
+	unsigned int fault_size = PAGE_SIZE;
 
 	if (check_vma(dax_dev, vmf->vma, __func__))
 		return VM_FAULT_SIGBUS;
@@ -435,6 +436,9 @@ static int __dax_dev_pte_fault(struct dax_dev *dax_dev, struct vm_fault *vmf)
 		dev_dbg(dev, "%s: alignment > fault size\n", __func__);
 		return VM_FAULT_SIGBUS;
 	}
+
+	if (fault_size != dax_region->align)
+		return VM_FAULT_SIGBUS;
 
 	phys = pgoff_to_phys(dax_dev, vmf->pgoff, PAGE_SIZE);
 	if (phys == -1) {
@@ -502,6 +506,7 @@ static int __dax_dev_pud_fault(struct dax_dev *dax_dev, struct vm_fault *vmf)
 	phys_addr_t phys;
 	pgoff_t pgoff;
 	pfn_t pfn;
+	unsigned int fault_size = PMD_SIZE;
 
 	if (check_vma(dax_dev, vmf->vma, __func__))
 		return VM_FAULT_SIGBUS;
@@ -518,8 +523,18 @@ static int __dax_dev_pud_fault(struct dax_dev *dax_dev, struct vm_fault *vmf)
 		return VM_FAULT_SIGBUS;
 	}
 
-	pgoff = linear_page_index(vmf->vma, pud_addr);
-	phys = pgoff_to_phys(dax_dev, pgoff, PUD_SIZE);
+	if (fault_size < dax_region->align)
+		return VM_FAULT_SIGBUS;
+	else if (fault_size > dax_region->align)
+		return VM_FAULT_FALLBACK;
+
+	/* if we are outside of the VMA */
+	if (pmd_addr < vma->vm_start ||
+			(pmd_addr + PMD_SIZE) > vma->vm_end)
+		return VM_FAULT_SIGBUS;
+
+	pgoff = linear_page_index(vma, pmd_addr);
+	phys = pgoff_to_phys(dax_dev, pgoff, PMD_SIZE);
 	if (phys == -1) {
 		dev_dbg(dev, "%s: phys_to_pgoff(%#lx) failed\n", __func__,
 				pgoff);

@@ -89,24 +89,6 @@ static int ci_hdrc_msm_notify_event(struct ci_hdrc *ci, unsigned event)
 	switch (event) {
 	case CI_HDRC_CONTROLLER_RESET_EVENT:
 		dev_dbg(dev, "CI_HDRC_CONTROLLER_RESET_EVENT received\n");
-
-		hw_phymode_configure(ci);
-		if (msm_ci->secondary_phy) {
-			u32 val = readl_relaxed(msm_ci->base + HS_PHY_SEC_CTRL);
-			val |= HS_PHY_DIG_CLAMP_N;
-			writel_relaxed(val, msm_ci->base + HS_PHY_SEC_CTRL);
-		}
-
-		ret = phy_init(ci->phy);
-		if (ret)
-			return ret;
-
-		ret = phy_power_on(ci->phy);
-		if (ret) {
-			phy_exit(ci->phy);
-			return ret;
-		}
-
 		/* use AHB transactor, allow posted data writes */
 		hw_write_id_reg(ci, HS_PHY_AHB_MODE, 0xffffffff, 0x8);
 
@@ -140,14 +122,12 @@ static int ci_hdrc_msm_notify_event(struct ci_hdrc *ci, unsigned event)
 	return 0;
 }
 
-static int ci_hdrc_msm_mux_phy(struct ci_hdrc_msm *ci,
-			       struct platform_device *pdev)
-{
-	struct regmap *regmap;
-	struct device *dev = &pdev->dev;
-	struct of_phandle_args args;
-	u32 val;
-	int ret;
+static struct ci_hdrc_platform_data ci_hdrc_msm_platdata = {
+	.name			= "ci_hdrc_msm",
+	.capoffset		= DEF_CAPOFFSET,
+	.flags			= CI_HDRC_REGS_SHARED |
+				  CI_HDRC_DISABLE_STREAMING |
+				  CI_HDRC_OVERRIDE_AHB_BURST,
 
 	ret = of_parse_phandle_with_fixed_args(dev->of_node, "phy-select", 2, 0,
 					       &args);

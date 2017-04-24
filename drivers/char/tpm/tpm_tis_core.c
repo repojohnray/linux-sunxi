@@ -747,10 +747,15 @@ int tpm_tis_core_init(struct device *dev, struct tpm_tis_data *priv, int irq,
 		 (chip->flags & TPM_CHIP_FLAG_TPM2) ? "2.0" : "1.2",
 		 vendor >> 16, rid);
 
-	probe = probe_itpm(chip);
-	if (probe < 0) {
-		rc = -ENODEV;
-		goto out_err;
+	if (!(priv->flags & TPM_TIS_ITPM_WORKAROUND)) {
+		probe = probe_itpm(chip);
+		if (probe < 0) {
+			rc = -ENODEV;
+			goto out_err;
+		}
+
+		if (!!probe)
+			priv->flags |= TPM_TIS_ITPM_WORKAROUND;
 	}
 
 	/* Figure out the capabilities */

@@ -333,6 +333,11 @@ int hv_ringbuffer_write(struct vmbus_channel *channel,
 	if (channel->rescind)
 		return -ENODEV;
 
+	hv_signal_on_write(old_write, channel, kick_q);
+
+	if (channel->rescind)
+		return -ENODEV;
+
 	return 0;
 }
 

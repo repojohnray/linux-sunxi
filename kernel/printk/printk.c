@@ -1563,7 +1563,7 @@ static void call_console_drivers(const char *ext_text, size_t ext_len,
 {
 	struct console *con;
 
-	trace_console(text, len);
+	trace_console_rcuidle(text, len);
 
 	if (!console_drivers)
 		return;

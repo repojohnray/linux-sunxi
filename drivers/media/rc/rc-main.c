@@ -1662,7 +1662,7 @@ EXPORT_SYMBOL_GPL(devm_rc_allocate_device);
 static int rc_setup_rx_device(struct rc_dev *dev)
 {
 	int rc;
-	struct rc_map *rc_map;
+	u64 rc_type;
 
 	if (!dev->map_name)
 		return -EINVAL;
@@ -1791,8 +1791,20 @@ int rc_register_device(struct rc_dev *dev)
 		}
 		rc = ir_raw_event_register(dev);
 		if (rc < 0)
-			goto out_rx;
+			goto out_input;
 	}
+
+	rc_type = BIT_ULL(rc_map->rc_type);
+
+	if (dev->change_protocol) {
+		rc = dev->change_protocol(dev, &rc_type);
+		if (rc < 0)
+			goto out_raw;
+		dev->enabled_protocols = rc_type;
+	}
+
+	if (dev->driver_type == RC_DRIVER_IR_RAW)
+		ir_raw_load_modules(&rc_type);
 
 	/* Allow the RC sysfs nodes to be accessible */
 	atomic_set(&dev->initialized, 1);

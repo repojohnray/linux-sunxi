@@ -543,6 +543,18 @@ struct acpi_chan_package {   /* ACPICA seems to require 64 bit integers */
 	u64 mclock_value;    /* usually 25MHz (0x17d7940), ignored */
 };
 
+static bool is_valleyview(void)
+{
+	static const struct x86_cpu_id cpu_ids[] = {
+		{ X86_VENDOR_INTEL, 6, 55 }, /* Valleyview, Bay Trail */
+		{}
+	};
+
+	if (!x86_match_cpu(cpu_ids))
+		return false;
+	return true;
+}
+
 static int snd_cht_mc_probe(struct platform_device *pdev)
 {
 	int ret_val = 0;
@@ -553,7 +565,6 @@ static int snd_cht_mc_probe(struct platform_device *pdev)
 	const char *i2c_name = NULL;
 	int dai_index = 0;
 	bool found = false;
-	bool is_bytcr = false;
 
 	drv = devm_kzalloc(&pdev->dev, sizeof(*drv), GFP_ATOMIC);
 	if (!drv)
@@ -680,6 +691,16 @@ static int snd_cht_mc_probe(struct platform_device *pdev)
 
 		cht_dailink[dai_index].cpu_dai_name =
 			cht_rt5645_cpu_dai_name;
+	}
+
+	if (is_valleyview()) {
+		drv->mclk = devm_clk_get(&pdev->dev, "pmc_plt_clk_3");
+		if (IS_ERR(drv->mclk)) {
+			dev_err(&pdev->dev,
+				"Failed to get MCLK from pmc_plt_clk_3: %ld\n",
+				PTR_ERR(drv->mclk));
+			return PTR_ERR(drv->mclk);
+		}
 	}
 
 	if (is_valleyview()) {

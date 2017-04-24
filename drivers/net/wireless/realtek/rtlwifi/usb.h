@@ -147,6 +147,7 @@ struct rtl_usb {
 
 struct rtl_usb_priv {
 	struct bt_coexist_info bt_coexist;
+	struct rtl_led_ctl ledctl;
 	struct rtl_usb dev;
 };
 
