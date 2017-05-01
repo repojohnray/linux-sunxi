@@ -94,12 +94,13 @@
 
 	reg_usb0_vbus: usb0-vbus {
 		compatible = "regulator-fixed";
+		pinctrl-names = "default";
+		pinctrl-0 = <&usb0_vbus_pin_orangepi>;
 		regulator-name = "usb0-vbus";
 		regulator-min-microvolt = <5000000>;
 		regulator-max-microvolt = <5000000>;
 		enable-active-high;
 		gpio = <&r_pio 0 2 GPIO_ACTIVE_HIGH>; /* PL2 */
-		status = "okay";
 	};
 
 	reg_gmac_3v3: gmac-3v3 {
@@ -268,6 +269,13 @@
 &pio {
 	gmac_power_pin_orangepi: gmac_power_pin@0 {
 		pins = "PD6";
+		function = "gpio_out";
+	};
+};
+
+&r_pio {
+	usb0_vbus_pin_orangepi: usb0_vbus_pin@0 {
+		pins = "PL2";
 		function = "gpio_out";
 	};
 };
