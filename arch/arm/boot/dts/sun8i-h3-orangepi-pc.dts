@@ -257,10 +257,16 @@
 		pins = "PL3";
 		function = "gpio_in";
 	};
+
+	usb0_vbus_pin_opi_pc: usb0_vbus_pin@0 {
+		pins = "PL2";
+		function = "gpio_out";
+	};
 };
 
 &reg_usb0_vbus {
 	gpio = <&r_pio 0 2 GPIO_ACTIVE_HIGH>; /* PL2 */
+	pinctrl-0 = <&usb0_vbus_pin_opi_pc>;
 	status = "okay";
 };
 
