@@ -61,6 +61,8 @@
 
 	aliases {
 		serial0 = &uart0;
+		ethernet0 = &emac;
+		lcd0 = &lcd0;
 	};
 
 	chosen {
