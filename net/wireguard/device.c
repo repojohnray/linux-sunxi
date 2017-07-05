@@ -261,7 +261,8 @@ static void setup(struct net_device *dev)
 	enum { WG_NETDEV_FEATURES = NETIF_F_HW_CSUM | NETIF_F_RXCSUM | NETIF_F_SG | NETIF_F_GSO | NETIF_F_GSO_SOFTWARE | NETIF_F_HIGHDMA };
 
 	dev->netdev_ops = &netdev_ops;
-	dev->destructor = destruct;
+	dev->needs_free_netdev  = true;
+	dev->priv_destructor    = destruct;
 	dev->hard_header_len = 0;
 	dev->addr_len = 0;
 	dev->needed_headroom = DATA_PACKET_HEAD_ROOM;
