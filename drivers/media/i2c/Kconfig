@@ -1026,6 +1026,13 @@ config VIDEO_DW9807_VCM
 	  capability. This is designed for linear control of
 	  voice coil motors, controlled via I2C serial interface.
 
+config VIDEO_HM5065
+	tristate "Himax HM5065 sensor support"
+	depends on I2C && VIDEO_V4L2 && VIDEO_V4L2_SUBDEV_API
+	---help---
+	  This is a V4L2 sensor-level driver for Himax HM5065
+	  5 Mpixel camera.
+
 comment "Flash devices"
 
 config VIDEO_ADP1653
