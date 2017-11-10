@@ -249,6 +249,24 @@
 		interrupts = <7 10 IRQ_TYPE_EDGE_RISING>; /* PH10 / EINT10 */
 	};
 
+	/* Magnetic Sensor */
+	ak8963: ak8963@d {
+		status = "disabled"; /* broken */ 
+		compatible = "asahi-kasei,ak8963";
+		reg = <0x0d>;
+		interrupt-parent = <&pio>;
+		interrupts = <1 2 IRQ_TYPE_EDGE_RISING>; /* PB2 */
+		mount-matrix =  /* x0 */ "-0.984807753012208",
+				/* y0 */ "0",
+				/* z0 */ "-0.173648177666930",
+				/* x1 */ "0",
+				/* y1 */ "-1",
+				/* z1 */ "0",
+				/* x2 */ "-0.173648177666930",
+				/* y2 */ "0",
+				/* z2 */ "0.984807753012208";
+	};
+
 	/* Light Sensor */
 	ltr501: ltr501@23 {
 		status = "disabled"; /* no output */ 
