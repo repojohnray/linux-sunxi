@@ -248,6 +248,15 @@
 		interrupt-parent = <&pio>;
 		interrupts = <7 10 IRQ_TYPE_EDGE_RISING>; /* PH10 / EINT10 */
 	};
+
+	/* Light Sensor */
+	ltr501: ltr501@23 {
+		status = "disabled"; /* no output */ 
+		compatible = "ltr,ltr501";
+		reg = <0x23>;
+		interrupt-parent = <&pio>;
+		interrupts = <6 12 IRQ_TYPE_EDGE_FALLING>; /* PG12 */
+	};
 };
 
 &mmc0 {
