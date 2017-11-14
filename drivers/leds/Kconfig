@@ -819,6 +819,13 @@ config LEDS_LM36274
 	  Say Y to enable the LM36274 LED driver for TI LMU devices.
 	  This supports the LED device LM36274.
 
+config LEDS_AXP20X
+	tristate "LED support for AXP20X-like PMICs (AXP813, ...)"
+	depends on LEDS_CLASS && MFD_AXP20X
+	help
+	  This option enables support for on-chip LED drivers on
+	  AXP20X-like PMICs.
+
 comment "LED Triggers"
 source "drivers/leds/trigger/Kconfig"
 
