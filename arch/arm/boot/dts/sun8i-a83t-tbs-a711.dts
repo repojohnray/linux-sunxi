@@ -127,7 +127,9 @@
 		regulator-min-microvolt = <3000000>;
 		regulator-max-microvolt = <3000000>;
 		enable-active-high;
-		gpio = <&pio 3 4 GPIO_ACTIVE_HIGH>; /* PD4 */
+		/*XXX: this doesn't control GPS regulator, shematics show FLAG
+		 * pin */
+		//gpio = <&pio 3 4 GPIO_ACTIVE_HIGH>; /* PD4 */
 	};
 
 	reg_vbat: reg-vbat {
