@@ -63,6 +63,7 @@
 
 		cpu0: cpu@0 {
 			compatible = "arm,cortex-a7";
+			clock-frequency = <1200000000>;
 			device_type = "cpu";
 			clocks = <&ccu CLK_C0CPUX>;
 			operating-points-v2 = <&cpu0_opp_table>;
@@ -76,6 +77,7 @@
 
 		cpu@1 {
 			compatible = "arm,cortex-a7";
+			clock-frequency = <1200000000>;
 			device_type = "cpu";
 			clocks = <&ccu CLK_C0CPUX>;
 			operating-points-v2 = <&cpu0_opp_table>;
@@ -87,6 +89,7 @@
 
 		cpu@2 {
 			compatible = "arm,cortex-a7";
+			clock-frequency = <1200000000>;
 			device_type = "cpu";
 			clocks = <&ccu CLK_C0CPUX>;
 			operating-points-v2 = <&cpu0_opp_table>;
@@ -98,6 +101,7 @@
 
 		cpu@3 {
 			compatible = "arm,cortex-a7";
+			clock-frequency = <1200000000>;
 			device_type = "cpu";
 			clocks = <&ccu CLK_C0CPUX>;
 			operating-points-v2 = <&cpu0_opp_table>;
@@ -109,6 +113,7 @@
 
 		cpu100: cpu@100 {
 			compatible = "arm,cortex-a7";
+			clock-frequency = <1200000000>;
 			device_type = "cpu";
 			clocks = <&ccu CLK_C1CPUX>;
 			operating-points-v2 = <&cpu1_opp_table>;
@@ -122,6 +127,7 @@
 
 		cpu@101 {
 			compatible = "arm,cortex-a7";
+			clock-frequency = <1200000000>;
 			device_type = "cpu";
 			clocks = <&ccu CLK_C1CPUX>;
 			operating-points-v2 = <&cpu1_opp_table>;
@@ -133,6 +139,7 @@
 
 		cpu@102 {
 			compatible = "arm,cortex-a7";
+			clock-frequency = <1200000000>;
 			device_type = "cpu";
 			clocks = <&ccu CLK_C1CPUX>;
 			operating-points-v2 = <&cpu1_opp_table>;
@@ -144,6 +151,7 @@
 
 		cpu@103 {
 			compatible = "arm,cortex-a7";
+			clock-frequency = <1200000000>;
 			device_type = "cpu";
 			clocks = <&ccu CLK_C1CPUX>;
 			operating-points-v2 = <&cpu1_opp_table>;
