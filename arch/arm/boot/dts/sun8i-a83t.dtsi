@@ -75,7 +75,7 @@
 			cooling-max-level = <7>;
 		};
 
-		cpu@1 {
+		cpu1: cpu@1 {
 			compatible = "arm,cortex-a7";
 			clock-frequency = <1200000000>;
 			device_type = "cpu";
@@ -87,7 +87,7 @@
 			#cooling-cells = <2>;
 		};
 
-		cpu@2 {
+		cpu2: cpu@2 {
 			compatible = "arm,cortex-a7";
 			clock-frequency = <1200000000>;
 			device_type = "cpu";
@@ -99,7 +99,7 @@
 			#cooling-cells = <2>;
 		};
 
-		cpu@3 {
+		cpu3: cpu@3 {
 			compatible = "arm,cortex-a7";
 			clock-frequency = <1200000000>;
 			device_type = "cpu";
@@ -125,7 +125,7 @@
 			cooling-max-level = <7>;
 		};
 
-		cpu@101 {
+		cpu101: cpu@101 {
 			compatible = "arm,cortex-a7";
 			clock-frequency = <1200000000>;
 			device_type = "cpu";
@@ -137,7 +137,7 @@
 			#cooling-cells = <2>;
 		};
 
-		cpu@102 {
+		cpu102: cpu@102 {
 			compatible = "arm,cortex-a7";
 			clock-frequency = <1200000000>;
 			device_type = "cpu";
@@ -149,7 +149,7 @@
 			#cooling-cells = <2>;
 		};
 
-		cpu@103 {
+		cpu103: cpu@103 {
 			compatible = "arm,cortex-a7";
 			clock-frequency = <1200000000>;
 			device_type = "cpu";
