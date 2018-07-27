@@ -41,6 +41,8 @@
  *     OTHER DEALINGS IN THE SOFTWARE.
  */
 
+#define A83T_C1_DISABLE
+
 /dts-v1/;
 #include "sun8i-a83t.dtsi"
 
@@ -184,9 +186,11 @@
 	cpu-supply = <&reg_dcdc2>;
 };
 
+#ifndef A83T_C1_DISABLE
 &cpu100 {
 	cpu-supply = <&reg_dcdc3>;
 };
+#endif
 
 &cpu0_thermal {
 	trips {
@@ -210,6 +214,7 @@
 	};
 };
 
+#ifndef A83T_C1_DISABLE
 &cpu1_thermal {
 	trips {
 		cpu1_hot: cpu_hot {
@@ -231,6 +236,7 @@
 		};
 	};
 };
+#endif
 
 &csi {
 	pinctrl-names = "default";
@@ -483,7 +489,9 @@
 &reg_dcdc3 {
 	regulator-min-microvolt = <700000>;
 	regulator-max-microvolt = <1100000>;
+#ifndef A83T_C1_DISABLE
 	regulator-always-on;
+#endif
 	regulator-name = "vdd-cpu-B";
 };
 
