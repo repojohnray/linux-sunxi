@@ -43,10 +43,11 @@
 #ifndef _DT_BINDINGS_CLK_SUN8I_H3_H_
 #define _DT_BINDINGS_CLK_SUN8I_H3_H_
 
+#define CLK_PLL_VIDEO		6
+
 #define CLK_PLL_PERIPH0		9
 
 #define CLK_PLL_DE		13
-
 #define CLK_CPUX		14
 
 #define CLK_BUS_CE		20

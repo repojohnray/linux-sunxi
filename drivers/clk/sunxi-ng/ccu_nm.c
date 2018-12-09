@@ -20,7 +20,7 @@ struct _ccu_nm {
 };
 
 static void ccu_nm_find_best(unsigned long parent, unsigned long rate,
-			     struct _ccu_nm *nm)
+			     unsigned long min_rate, struct _ccu_nm *nm)
 {
 	unsigned long best_rate = 0;
 	unsigned long best_n = 0, best_m = 0;
@@ -30,7 +30,7 @@ static void ccu_nm_find_best(unsigned long parent, unsigned long rate,
 		for (_m = nm->min_m; _m <= nm->max_m; _m++) {
 			unsigned long tmp_rate = parent * _n  / _m;
 
-			if (tmp_rate > rate)
+			if (tmp_rate > rate || tmp_rate < min_rate)
 				continue;
 
 			if ((rate - tmp_rate) < (rate - best_rate)) {
@@ -70,11 +70,18 @@ static unsigned long ccu_nm_recalc_rate(struct clk_hw *hw,
 					unsigned long parent_rate)
 {
 	struct ccu_nm *nm = hw_to_ccu_nm(hw);
+	unsigned long rate;
 	unsigned long n, m;
 	u32 reg;
 
-	if (ccu_frac_helper_is_enabled(&nm->common, &nm->frac))
-		return ccu_frac_helper_read_rate(&nm->common, &nm->frac);
+	if (ccu_frac_helper_is_enabled(&nm->common, &nm->frac)) {
+		rate = ccu_frac_helper_read_rate(&nm->common, &nm->frac);
+
+		if (nm->common.features & CCU_FEATURE_FIXED_POSTDIV)
+			rate /= nm->fixed_post_div;
+
+		return rate;
+	}
 
 	reg = readl(nm->common.base + nm->common.reg);
 
@@ -90,7 +97,15 @@ static unsigned long ccu_nm_recalc_rate(struct clk_hw *hw,
 	if (!m)
 		m++;
 
-	return parent_rate * n / m;
+	if (ccu_sdm_helper_is_enabled(&nm->common, &nm->sdm))
+		rate = ccu_sdm_helper_read_rate(&nm->common, &nm->sdm, m, n);
+	else
+		rate = parent_rate * n / m;
+
+	if (nm->common.features & CCU_FEATURE_FIXED_POSTDIV)
+		rate /= nm->fixed_post_div;
+
+	return rate;
 }
 
 static long ccu_nm_round_rate(struct clk_hw *hw, unsigned long rate,
@@ -99,17 +114,33 @@ static long ccu_nm_round_rate(struct clk_hw *hw, unsigned long rate,
 	struct ccu_nm *nm = hw_to_ccu_nm(hw);
 	struct _ccu_nm _nm;
 
-	if (ccu_frac_helper_has_rate(&nm->common, &nm->frac, rate))
+	if (nm->common.features & CCU_FEATURE_FIXED_POSTDIV)
+		rate *= nm->fixed_post_div;
+
+	if (ccu_frac_helper_has_rate(&nm->common, &nm->frac, rate)) {
+		if (nm->common.features & CCU_FEATURE_FIXED_POSTDIV)
+			rate /= nm->fixed_post_div;
 		return rate;
+	}
+
+	if (ccu_sdm_helper_has_rate(&nm->common, &nm->sdm, rate)) {
+		if (nm->common.features & CCU_FEATURE_FIXED_POSTDIV)
+			rate /= nm->fixed_post_div;
+		return rate;
+	}
 
 	_nm.min_n = nm->n.min ?: 1;
 	_nm.max_n = nm->n.max ?: 1 << nm->n.width;
 	_nm.min_m = 1;
 	_nm.max_m = nm->m.max ?: 1 << nm->m.width;
 
-	ccu_nm_find_best(*parent_rate, rate, &_nm);
+	ccu_nm_find_best(*parent_rate, rate, nm->min_rate, &_nm);
+	rate = *parent_rate * _nm.n / _nm.m;
 
-	return *parent_rate * _nm.n / _nm.m;
+	if (nm->common.features & CCU_FEATURE_FIXED_POSTDIV)
+		rate /= nm->fixed_post_div;
+
+	return rate;
 }
 
 static int ccu_nm_set_rate(struct clk_hw *hw, unsigned long rate,
@@ -119,6 +150,13 @@ static int ccu_nm_set_rate(struct clk_hw *hw, unsigned long rate,
 	struct _ccu_nm _nm;
 	unsigned long flags;
 	u32 reg;
+
+	/* Adjust target rate according to post-dividers */
+	if (nm->common.features & CCU_FEATURE_FIXED_POSTDIV)
+		rate = rate * nm->fixed_post_div;
+
+	if (rate < nm->min_rate)
+		return -EINVAL;
 
 	if (ccu_frac_helper_has_rate(&nm->common, &nm->frac, rate)) {
 		spin_lock_irqsave(nm->common.lock, flags);
@@ -143,7 +181,16 @@ static int ccu_nm_set_rate(struct clk_hw *hw, unsigned long rate,
 	_nm.min_m = 1;
 	_nm.max_m = nm->m.max ?: 1 << nm->m.width;
 
-	ccu_nm_find_best(parent_rate, rate, &_nm);
+	if (ccu_sdm_helper_has_rate(&nm->common, &nm->sdm, rate)) {
+		ccu_sdm_helper_enable(&nm->common, &nm->sdm, rate);
+
+		/* Sigma delta modulation requires specific N and M factors */
+		ccu_sdm_helper_get_factors(&nm->common, &nm->sdm, rate,
+					   &_nm.m, &_nm.n);
+	} else {
+		ccu_sdm_helper_disable(&nm->common, &nm->sdm);
+		ccu_nm_find_best(parent_rate, rate, nm->min_rate, &_nm);
+	}
 
 	spin_lock_irqsave(nm->common.lock, flags);
 
