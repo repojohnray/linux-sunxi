@@ -20,7 +20,7 @@ struct _ccu_nm {
 };
 
 static void ccu_nm_find_best(unsigned long parent, unsigned long rate,
-			     unsigned long min_rate, struct _ccu_nm *nm)
+			     struct _ccu_nm *nm)
 {
 	unsigned long best_rate = 0;
 	unsigned long best_n = 0, best_m = 0;
@@ -30,7 +30,7 @@ static void ccu_nm_find_best(unsigned long parent, unsigned long rate,
 		for (_m = nm->min_m; _m <= nm->max_m; _m++) {
 			unsigned long tmp_rate = parent * _n  / _m;
 
-			if (tmp_rate > rate || tmp_rate < min_rate)
+			if (tmp_rate > rate)
 				continue;
 
 			if ((rate - tmp_rate) < (rate - best_rate)) {
@@ -117,6 +117,13 @@ static long ccu_nm_round_rate(struct clk_hw *hw, unsigned long rate,
 	if (nm->common.features & CCU_FEATURE_FIXED_POSTDIV)
 		rate *= nm->fixed_post_div;
 
+	if (rate < nm->min_rate) {
+		rate = nm->min_rate;
+		if (nm->common.features & CCU_FEATURE_FIXED_POSTDIV)
+			rate /= nm->fixed_post_div;
+		return rate;
+	}
+
 	if (ccu_frac_helper_has_rate(&nm->common, &nm->frac, rate)) {
 		if (nm->common.features & CCU_FEATURE_FIXED_POSTDIV)
 			rate /= nm->fixed_post_div;
@@ -134,7 +141,7 @@ static long ccu_nm_round_rate(struct clk_hw *hw, unsigned long rate,
 	_nm.min_m = 1;
 	_nm.max_m = nm->m.max ?: 1 << nm->m.width;
 
-	ccu_nm_find_best(*parent_rate, rate, nm->min_rate, &_nm);
+	ccu_nm_find_best(*parent_rate, rate, &_nm);
 	rate = *parent_rate * _nm.n / _nm.m;
 
 	if (nm->common.features & CCU_FEATURE_FIXED_POSTDIV)
@@ -154,9 +161,6 @@ static int ccu_nm_set_rate(struct clk_hw *hw, unsigned long rate,
 	/* Adjust target rate according to post-dividers */
 	if (nm->common.features & CCU_FEATURE_FIXED_POSTDIV)
 		rate = rate * nm->fixed_post_div;
-
-	if (rate < nm->min_rate)
-		return -EINVAL;
 
 	if (ccu_frac_helper_has_rate(&nm->common, &nm->frac, rate)) {
 		spin_lock_irqsave(nm->common.lock, flags);
@@ -189,7 +193,7 @@ static int ccu_nm_set_rate(struct clk_hw *hw, unsigned long rate,
 					   &_nm.m, &_nm.n);
 	} else {
 		ccu_sdm_helper_disable(&nm->common, &nm->sdm);
-		ccu_nm_find_best(parent_rate, rate, nm->min_rate, &_nm);
+		ccu_nm_find_best(parent_rate, rate, &_nm);
 	}
 
 	spin_lock_irqsave(nm->common.lock, flags);
