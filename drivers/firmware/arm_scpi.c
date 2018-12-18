@@ -231,7 +231,8 @@ struct scpi_xfer {
 
 struct scpi_chan {
 	struct mbox_client cl;
-	struct mbox_chan *chan;
+	struct mbox_chan *tx_chan;
+	struct mbox_chan *rx_chan;
 	void __iomem *tx_payload;
 	void __iomem *rx_payload;
 	struct list_head rx_pending;
@@ -484,8 +485,7 @@ static int scpi_send_message(u8 idx, void *tx_buf, unsigned int tx_len,
 	if (scpi_info->is_legacy)
 		chan = test_bit(cmd, scpi_info->cmd_priority) ? 1 : 0;
 	else
-		chan = atomic_inc_return(&scpi_info->next_chan) %
-			scpi_info->num_chans;
+		chan = 0;
 	scpi_chan = scpi_info->channels + chan;
 
 	msg = get_scpi_xfer(scpi_chan);
@@ -505,7 +505,7 @@ static int scpi_send_message(u8 idx, void *tx_buf, unsigned int tx_len,
 	msg->rx_len = rx_len;
 	reinit_completion(&msg->done);
 
-	ret = mbox_send_message(scpi_chan->chan, msg);
+	ret = mbox_send_message(scpi_chan->tx_chan, msg);
 	if (ret < 0 || !rx_buf)
 		goto out;
 
@@ -854,8 +854,10 @@ static void scpi_free_channels(void *data)
 	struct scpi_drvinfo *info = data;
 	int i;
 
-	for (i = 0; i < info->num_chans; i++)
-		mbox_free_channel(info->channels[i].chan);
+	for (i = 0; i < info->num_chans; i++) {
+		mbox_free_channel(info->channels[i].rx_chan);
+		mbox_free_channel(info->channels[i].tx_chan);
+	}
 }
 
 static int scpi_remove(struct platform_device *pdev)
@@ -917,6 +919,13 @@ static int scpi_probe(struct platform_device *pdev)
 		return -ENODEV;
 	}
 
+	if (count % 2 != 0) {
+		dev_err(dev, "mboxes must have even count in '%pOF'\n", np);
+		return -EINVAL;
+	}
+
+	count /= 2;
+
 	scpi_info->channels = devm_kcalloc(dev, count, sizeof(struct scpi_chan),
 					   GFP_KERNEL);
 	if (!scpi_info->channels)
@@ -948,6 +957,15 @@ static int scpi_probe(struct platform_device *pdev)
 		}
 		pchan->tx_payload = pchan->rx_payload + (size >> 1);
 
+		INIT_LIST_HEAD(&pchan->rx_pending);
+		INIT_LIST_HEAD(&pchan->xfers_list);
+		spin_lock_init(&pchan->rx_lock);
+		mutex_init(&pchan->xfers_lock);
+
+		ret = scpi_alloc_xfer_list(dev, pchan);
+		if (ret)
+			return ret;
+
 		cl->dev = dev;
 		cl->rx_callback = scpi_handle_remote_msg;
 		cl->tx_prepare = scpi_tx_prepare;
@@ -955,22 +973,23 @@ static int scpi_probe(struct platform_device *pdev)
 		cl->tx_tout = 20;
 		cl->knows_txdone = false; /* controller can't ack */
 
-		INIT_LIST_HEAD(&pchan->rx_pending);
-		INIT_LIST_HEAD(&pchan->xfers_list);
-		spin_lock_init(&pchan->rx_lock);
-		mutex_init(&pchan->xfers_lock);
-
-		ret = scpi_alloc_xfer_list(dev, pchan);
-		if (!ret) {
-			pchan->chan = mbox_request_channel(cl, idx);
-			if (!IS_ERR(pchan->chan))
-				continue;
-			ret = PTR_ERR(pchan->chan);
+		pchan->tx_chan = mbox_request_channel(cl, idx * 2);
+		if (IS_ERR(pchan->tx_chan)) {
+			ret = PTR_ERR(pchan->tx_chan);
 			if (ret != -EPROBE_DEFER)
 				dev_err(dev, "failed to get channel%d err %d\n",
-					idx, ret);
+					idx * 2, ret);
+			return ret;
 		}
-		return ret;
+
+		pchan->rx_chan = mbox_request_channel(cl, idx * 2 + 1);
+		if (IS_ERR(pchan->rx_chan)) {
+			ret = PTR_ERR(pchan->rx_chan);
+			if (ret != -EPROBE_DEFER)
+				dev_err(dev, "failed to get channel%d err %d\n",
+					idx * 2 + 1, ret);
+			return ret;
+		}
 	}
 
 	scpi_info->commands = scpi_std_commands;
