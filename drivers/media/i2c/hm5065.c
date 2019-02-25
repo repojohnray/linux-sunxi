@@ -1,6 +1,6 @@
 /*
  * Himax HM5065 driver.
- * Copyright (C) 2017 Ondřej Jirman <megi@xff.cz>.
+ * Copyright (C) 2017-2019 Ondřej Jirman <megi@xff.cz>.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -33,8 +33,10 @@
 #define HM5065_AF_FIRMWARE		"hm5065-af.bin"
 #define HM5065_FIRMWARE_PARAMETERS	"hm5065-init.bin"
 
-#define HM5065_SENSOR_WIDTH	2592
-#define HM5065_SENSOR_HEIGHT	1944
+#define HM5065_SENSOR_WIDTH	2592u
+#define HM5065_SENSOR_HEIGHT	1944u
+#define HM5065_CAPTURE_WIDTH_MIN	88u
+#define HM5065_CAPTURE_HEIGHT_MIN	72u
 
 /* {{{ Register definitions */
 
@@ -430,33 +432,6 @@ static const struct hm5065_clk_lut *hm5065_find_clk_lut(unsigned long freq)
 	return NULL;
 }
 
-struct hm5065_frame_size {
-	u32 width;
-	u32 height;
-	u8 max_fps; /* for a case without binning enabled */
-} __packed;
-
-/* must be sorted by frame area */
-static const struct hm5065_frame_size hm5065_frame_sizes[] = {
-	{ .width = 2592, .height = 1944, .max_fps = 5 },
-	{ .width = 1920, .height = 1080, .max_fps = 5 },
-	{ .width = 1600, .height = 1200, .max_fps = 5 },
-	{ .width = 1280, .height = 1024, .max_fps = 10 },
-	{ .width = 1280, .height = 720, .max_fps = 10 },
-	{ .width = 1024, .height = 768, .max_fps = 10 },
-	{ .width = 1024, .height = 600, .max_fps = 12 },
-	{ .width = 800, .height = 600, .max_fps = 15 },
-	{ .width = 640, .height = 480, .max_fps = 20 },
-	{ .width = 352, .height = 288, .max_fps = 30 },
-	{ .width = 320, .height = 240, .max_fps = 30 },
-	{ .width = 176, .height = 144, .max_fps = 30 },
-	{ .width = 160, .height = 120, .max_fps = 30 },
-	{ .width = 88, .height = 72, .max_fps = 30 },
-};
-
-#define HM5065_NUM_FRAME_SIZES ARRAY_SIZE(hm5065_frame_sizes)
-#define HM5065_DEFAULT_FRAME_SIZE 4
-
 struct hm5065_pixfmt {
 	u32 code;
 	u32 colorspace;
@@ -587,7 +562,6 @@ struct hm5065_dev {
 	struct v4l2_mbus_framefmt fmt;
 	struct v4l2_fract frame_interval;
 	struct hm5065_ctrls ctrls;
-	int max_frame_rate;
 
 	bool pending_mode_change;
 	bool powered;
@@ -1541,25 +1515,50 @@ static int hm5065_g_frame_interval(struct v4l2_subdev *sd,
 	return 0;
 }
 
+static int hm5065_get_max_binning(int width, int height)
+{
+	if (width < HM5065_SENSOR_WIDTH / 4 &&
+	    height < HM5065_SENSOR_HEIGHT / 4)
+		return 4;
+	else if (width < HM5065_SENSOR_WIDTH / 2 &&
+		 height < HM5065_SENSOR_HEIGHT / 2)
+		return 2;
+
+	return 1;
+}
+
+static int hm5065_get_max_fps(int width, int height)
+{
+	int max_fps, bin_factor;
+
+	// more bining allows for faster readouts
+	bin_factor = hm5065_get_max_binning(width, height);
+	max_fps = 25000000 / (width * height * 2) * bin_factor;
+
+	return clamp(max_fps, 1, 60);
+}
+
 static int hm5065_s_frame_interval(struct v4l2_subdev *sd,
 				   struct v4l2_subdev_frame_interval *fi)
 {
 	struct hm5065_dev *sensor = to_hm5065_dev(sd);
-	int ret = 0, fps;
+	int ret = 0, fps, max_fps;
 
 	if (fi->pad != 0)
 		return -EINVAL;
 
 	mutex_lock(&sensor->lock);
 
+	max_fps = hm5065_get_max_fps(sensor->fmt.width, sensor->fmt.height);
+
 	/* user requested infinite frame rate */
 	if (fi->interval.numerator == 0)
-		fps = sensor->max_frame_rate;
+		fps = max_fps;
 	else
 		fps = DIV_ROUND_CLOSEST(fi->interval.denominator,
 					fi->interval.numerator);
 
-	fps = clamp(fps, 1, sensor->max_frame_rate);
+	fps = clamp(fps, 1, max_fps);
 
 	sensor->frame_interval.numerator = 1;
 	sensor->frame_interval.denominator = fps;
@@ -1573,8 +1572,6 @@ static int hm5065_s_frame_interval(struct v4l2_subdev *sd,
 
 		ret = hm5065_write(sensor, HM5065_REG_DESIRED_FRAME_RATE_DEN,
 				   1);
-		if (ret)
-			goto err_unlock;
 	}
 
 err_unlock:
@@ -1582,23 +1579,11 @@ err_unlock:
 	return ret;
 }
 
-static int hm5065_get_max_binning(int width, int height)
-{
-	if (width < HM5065_SENSOR_WIDTH / 4 &&
-	    height < HM5065_SENSOR_HEIGHT / 4)
-		return 4;
-	else if (width < HM5065_SENSOR_WIDTH / 2 &&
-		 height < HM5065_SENSOR_HEIGHT / 2)
-		return 2;
-
-	return 1;
-}
-
 static int hm5065_setup_mode(struct hm5065_dev *sensor)
 {
-	int ret;
 	const struct hm5065_pixfmt *pix_fmt;
 	u8 sensor_mode;
+	int ret, fps;
 
 	pix_fmt = hm5065_find_format(sensor->fmt.code);
 	if (!pix_fmt) {
@@ -1653,7 +1638,7 @@ static int hm5065_setup_mode(struct hm5065_dev *sensor)
 		return ret;
 
 	/* without this, brightness, contrast and saturation will not work */
-	ret = hm5065_write(sensor, 0x5200, 9);
+	ret = hm5065_write(sensor, HM5065_REG_COLORSPACE, 9);
 	if (ret)
 		return ret;
 
@@ -1662,13 +1647,14 @@ static int hm5065_setup_mode(struct hm5065_dev *sensor)
 	if (ret)
 		return ret;
 
-	ret = hm5065_write16(sensor, HM5065_REG_DESIRED_FRAME_RATE_NUM,
-			     sensor->frame_interval.denominator);
+	fps = hm5065_get_max_fps(sensor->fmt.width, sensor->fmt.height);
+	fps = clamp(fps, 1, (int)sensor->frame_interval.denominator);
+
+	ret = hm5065_write16(sensor, HM5065_REG_DESIRED_FRAME_RATE_NUM, fps);
 	if (ret)
 		return ret;
 
-	ret = hm5065_write(sensor, HM5065_REG_DESIRED_FRAME_RATE_DEN,
-			   1);
+	ret = hm5065_write(sensor, HM5065_REG_DESIRED_FRAME_RATE_DEN, 1);
 	if (ret)
 		return ret;
 
@@ -1720,8 +1706,8 @@ out:
 /* {{{ Pad ops */
 
 static int hm5065_enum_mbus_code(struct v4l2_subdev *sd,
-				  struct v4l2_subdev_pad_config *cfg,
-				  struct v4l2_subdev_mbus_code_enum *code)
+				 struct v4l2_subdev_pad_config *cfg,
+				 struct v4l2_subdev_mbus_code_enum *code)
 {
 	if (code->pad != 0)
 		return -EINVAL;
@@ -1739,66 +1725,43 @@ static int hm5065_enum_frame_size(struct v4l2_subdev *sd,
 {
 	if (fse->pad != 0)
 		return -EINVAL;
-	if (fse->index >= HM5065_NUM_FRAME_SIZES * 2)
+	if (fse->index != 0)
 		return -EINVAL;
 
-	if (fse->index < HM5065_NUM_FRAME_SIZES) {
-		fse->min_width = fse->max_width =
-			hm5065_frame_sizes[fse->index].width;
-		fse->min_height = fse->max_height =
-			hm5065_frame_sizes[fse->index].height;
-	} else {
-		/* swap sides */
-		int off = fse->index - HM5065_NUM_FRAME_SIZES;
+	fse->min_width = HM5065_CAPTURE_WIDTH_MIN;
+	fse->min_height = HM5065_CAPTURE_HEIGHT_MIN;
 
-		fse->min_width = fse->max_width =
-			hm5065_frame_sizes[off].height;
-		fse->min_height = fse->max_height =
-			hm5065_frame_sizes[off].width;
-	}
+	fse->max_width = HM5065_SENSOR_WIDTH;
+	fse->max_height = HM5065_SENSOR_HEIGHT;
 
 	return 0;
 }
 
-static int hm5065_enum_frame_interval(
-	struct v4l2_subdev *sd,
-	struct v4l2_subdev_pad_config *cfg,
-	struct v4l2_subdev_frame_interval_enum *fie)
+static int hm5065_enum_frame_interval(struct v4l2_subdev *sd,
+				      struct v4l2_subdev_pad_config *cfg,
+				      struct v4l2_subdev_frame_interval_enum
+				      *fie)
 {
 	struct v4l2_fract tpf;
-	int max_fps, i;
+	u32 max_fps, width, height;
 
 	if (fie->pad != 0)
 		return -EINVAL;
 
-	/* find the max frame rate for the resolution */
-	for (i = 0; i < HM5065_NUM_FRAME_SIZES; i++) {
-		const struct hm5065_frame_size *fs = &hm5065_frame_sizes[i];
-		int width, height;
+	width = clamp(fie->width, HM5065_CAPTURE_WIDTH_MIN,
+		      HM5065_SENSOR_WIDTH);
+	height = clamp(fie->height, HM5065_CAPTURE_HEIGHT_MIN,
+		       HM5065_SENSOR_HEIGHT);
 
-		if (fie->width < fie->height) {
-			width = fs->height;
-			height = fs->width;
-		} else {
-			width = fs->width;
-			height = fs->height;
-		}
+	max_fps = hm5065_get_max_fps(width, height);
 
-		max_fps = fs->max_fps * hm5065_get_max_binning(width, height);
-
-		if (width == fie->width && height == fie->height)
-			goto found;
-	}
-
-	return -EINVAL;
-
-found:
 	if (fie->index + 1 > max_fps)
 		return -EINVAL;
 
 	tpf.numerator = 1;
 	tpf.denominator = fie->index + 1;
 	fie->interval = tpf;
+
 	return 0;
 }
 
@@ -1832,7 +1795,7 @@ static int hm5065_set_fmt(struct v4l2_subdev *sd,
 	struct hm5065_dev *sensor = to_hm5065_dev(sd);
 	struct v4l2_mbus_framefmt *mf = &format->format;
 	const struct hm5065_pixfmt *pixfmt;
-	int ret = 0, i, width, height, max_fps;
+	int ret = 0;
 
 	if (format->pad != 0)
 		return -EINVAL;
@@ -1851,27 +1814,10 @@ static int hm5065_set_fmt(struct v4l2_subdev *sd,
 
 	mutex_lock(&sensor->lock);
 
-	/* find highest resolution possible for the currently used frame rate */
-	for (i = 0; i < HM5065_NUM_FRAME_SIZES; i++) {
-		const struct hm5065_frame_size *fs = &hm5065_frame_sizes[i];
-
-		if (mf->width < mf->height) {
-			width = fs->height;
-			height = fs->width;
-		} else {
-			width = fs->width;
-			height = fs->height;
-		}
-
-		max_fps = fs->max_fps * hm5065_get_max_binning(width, height);
-
-		if (width <= mf->width && height <= mf->height)
-			break;
-	}
-
-	sensor->max_frame_rate = max_fps;
-	mf->width = width;
-	mf->height = height;
+	mf->width = clamp(mf->width, HM5065_CAPTURE_WIDTH_MIN,
+			  HM5065_SENSOR_WIDTH);
+	mf->height = clamp(mf->height, HM5065_CAPTURE_HEIGHT_MIN,
+			  HM5065_SENSOR_HEIGHT);
 
 	if (format->which == V4L2_SUBDEV_FORMAT_TRY) {
 		struct v4l2_mbus_framefmt *try_mf;
@@ -1946,7 +1892,6 @@ static int hm5065_configure(struct hm5065_dev *sensor)
 	if (sensor->ep.bus_type == V4L2_MBUS_BT656) {
 		ret = hm5065_write(sensor, HM5065_REG_BUS_CONFIG,
 				   HM5065_REG_BUS_CONFIG_BT656);
-		ret = 0;
 	} else {
 		ret = hm5065_write(sensor, HM5065_REG_BUS_CONFIG,
 				   HM5065_REG_BUS_CONFIG_PARALLEL_HH_VL);
@@ -2126,15 +2071,11 @@ static int hm5065_probe(struct i2c_client *client,
 	sensor->i2c_client = client;
 
 	sensor->fmt.code = hm5065_formats[0].code;
-	sensor->fmt.width = hm5065_frame_sizes[HM5065_DEFAULT_FRAME_SIZE].width;
-	sensor->fmt.height =
-		hm5065_frame_sizes[HM5065_DEFAULT_FRAME_SIZE].height;
+	sensor->fmt.width = 1280;
+	sensor->fmt.height = 720;
 	sensor->fmt.field = V4L2_FIELD_NONE;
 	sensor->frame_interval.numerator = 1;
-	sensor->frame_interval.denominator = 5;
-	sensor->max_frame_rate =
-		hm5065_frame_sizes[HM5065_DEFAULT_FRAME_SIZE].max_fps *
-		hm5065_get_max_binning(sensor->fmt.width, sensor->fmt.height);
+	sensor->frame_interval.denominator = 15;
 	sensor->pending_mode_change = true;
 
 	endpoint = fwnode_graph_get_next_endpoint(
@@ -2230,7 +2171,7 @@ static int hm5065_remove(struct i2c_client *client)
 
 static const struct i2c_device_id hm5065_id[] = {
 	{"hm5065", 0},
-	{},
+	{ /* sentinel */ }
 };
 MODULE_DEVICE_TABLE(i2c, hm5065_id);
 
