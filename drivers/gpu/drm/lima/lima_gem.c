@@ -3,6 +3,7 @@
 
 #include <linux/sync_file.h>
 #include <linux/pfn_t.h>
+#include <linux/idr.h>
 
 #include <drm/drm_file.h>
 #include <drm/drm_syncobj.h>
