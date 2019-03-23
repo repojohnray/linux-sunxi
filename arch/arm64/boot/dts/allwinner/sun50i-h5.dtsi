@@ -183,7 +183,7 @@
 			resets = <&ccu RST_BUS_GPU>;
 
 			assigned-clocks = <&ccu CLK_GPU>;
-			assigned-clock-rates = <384000000>;
+			assigned-clock-rates = <504000000>;
 		};
 
 		ths: thermal-sensor@1c25000 {
