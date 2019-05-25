@@ -356,12 +356,8 @@ static void cedrus_set_params(struct cedrus_ctx *ctx,
 
 	// picture parameters
 	reg = 0;
-	/*
-	 * FIXME: the kernel headers are allowing the default value to
-	 * be passed, but the libva doesn't give us that.
-	 */
-	reg |= (slice->num_ref_idx_l0_active_minus1 & 0x1f) << 10;
-	reg |= (slice->num_ref_idx_l1_active_minus1 & 0x1f) << 5;
+	reg |= (pps->num_ref_idx_l0_default_active_minus1 & 0x1f) << 10;
+	reg |= (pps->num_ref_idx_l1_default_active_minus1 & 0x1f) << 5;
 	reg |= (pps->weighted_bipred_idc & 0x3) << 2;
 	if (pps->flags & V4L2_H264_PPS_FLAG_ENTROPY_CODING_MODE)
 		reg |= VE_H264_PPS_ENTROPY_CODING_MODE;
