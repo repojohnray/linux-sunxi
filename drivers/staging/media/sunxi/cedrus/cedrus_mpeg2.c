@@ -96,7 +96,7 @@ static void cedrus_mpeg2_setup(struct cedrus_ctx *ctx, struct cedrus_run *run)
 	quantization = run->mpeg2.quantization;
 
 	/* Activate MPEG engine. */
-	cedrus_engine_enable(dev, CEDRUS_CODEC_MPEG2);
+	cedrus_engine_enable(dev, CEDRUS_CODEC_MPEG2, ctx->src_fmt.width);
 
 	/* Set intra quantization matrix. */
 

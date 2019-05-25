@@ -363,9 +363,7 @@ static void cedrus_h265_setup(struct cedrus_ctx *ctx,
 	pred_weight_table = &slice_params->pred_weight_table;
 
 	/* Activate H265 engine. */
-	cedrus_engine_enable(dev, CEDRUS_CODEC_H265);
-	if (sps->pic_width_in_luma_samples > 2048)
-		cedrus_write(dev, VE_MODE, cedrus_read(dev, VE_MODE) | BIT(21));
+	cedrus_engine_enable(dev, CEDRUS_CODEC_H265, ctx->src_fmt.width);
 
 	/* Source offset and length in bits. */
 
