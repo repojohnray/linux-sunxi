@@ -6,6 +6,7 @@
  * Copyright (c) 2018 Bootlin
  */
 
+#include <linux/delay.h>
 #include <linux/types.h>
 
 #include <media/videobuf2-dma-contig.h>
@@ -289,6 +290,20 @@ static void cedrus_write_pred_weight_table(struct cedrus_ctx *ctx,
 	}
 }
 
+static void cedrus_skip_bits(struct cedrus_dev *dev, int num)
+{
+	for (; num > 32; num -= 32) {
+		cedrus_write(dev, VE_H264_TRIGGER_TYPE, 0x3 | (32 << 8));
+		while (cedrus_read(dev, VE_H264_STATUS) & (1 << 8))
+			udelay(1);
+	}
+	if (num > 0) {
+		cedrus_write(dev, VE_H264_TRIGGER_TYPE, 0x3 | (num << 8));
+		while (cedrus_read(dev, VE_H264_STATUS) & (1 << 8))
+			udelay(1);
+	}
+}
+
 static void cedrus_set_params(struct cedrus_ctx *ctx,
 			      struct cedrus_run *run)
 {
@@ -299,12 +314,11 @@ static void cedrus_set_params(struct cedrus_ctx *ctx,
 	struct vb2_buffer *src_buf = &run->src->vb2_buf;
 	struct cedrus_dev *dev = ctx->dev;
 	dma_addr_t src_buf_addr;
-	u32 offset = slice->header_bit_size;
-	u32 len = (slice->size * 8) - offset;
+	u32 len = slice->size * 8;
 	u32 reg;
 
 	cedrus_write(dev, VE_H264_VLD_LEN, len);
-	cedrus_write(dev, VE_H264_VLD_OFFSET, offset);
+	cedrus_write(dev, VE_H264_VLD_OFFSET, 0);
 
 	src_buf_addr = vb2_dma_contig_plane_dma_addr(src_buf, 0);
 	cedrus_write(dev, VE_H264_VLD_END,
@@ -322,6 +336,8 @@ static void cedrus_set_params(struct cedrus_ctx *ctx,
 	 */
 	cedrus_write(dev, VE_H264_TRIGGER_TYPE,
 		     VE_H264_TRIGGER_TYPE_INIT_SWDEC);
+
+	cedrus_skip_bits(dev, slice->header_bit_size);
 
 	if (((pps->flags & V4L2_H264_PPS_FLAG_WEIGHTED_PRED) &&
 	     (slice->slice_type == V4L2_H264_SLICE_TYPE_P ||
