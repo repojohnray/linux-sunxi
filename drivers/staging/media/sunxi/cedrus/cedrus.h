@@ -74,6 +74,7 @@ struct cedrus_h265_run {
 	const struct v4l2_ctrl_hevc_sps			*sps;
 	const struct v4l2_ctrl_hevc_pps			*pps;
 	const struct v4l2_ctrl_hevc_slice_params	*slice_params;
+	const struct v4l2_ctrl_hevc_scaling_matrix	*scaling_matrix;
 };
 
 struct cedrus_run {
@@ -89,6 +90,10 @@ struct cedrus_run {
 
 struct cedrus_buffer {
 	struct v4l2_m2m_buffer          m2m_buf;
+
+	void		*mv_col_buf;
+	dma_addr_t	mv_col_buf_dma;
+	ssize_t		mv_col_buf_size;
 
 	union {
 		struct {
@@ -123,12 +128,10 @@ struct cedrus_ctx {
 			dma_addr_t	neighbor_info_buf_dma;
 		} h264;
 		struct {
-			void		*mv_col_buf;
-			dma_addr_t	mv_col_buf_addr;
-			ssize_t		mv_col_buf_size;
-			ssize_t		mv_col_buf_unit_size;
 			void		*neighbor_info_buf;
 			dma_addr_t	neighbor_info_buf_addr;
+			void		*entry_points_buf;
+			dma_addr_t	entry_points_buf_addr;
 		} h265;
 	} codec;
 };

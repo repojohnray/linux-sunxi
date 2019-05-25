@@ -433,8 +433,18 @@ static void cedrus_buf_cleanup(struct vb2_buffer *vb)
 	struct vb2_queue *vq = vb->vb2_queue;
 	struct cedrus_ctx *ctx = vb2_get_drv_priv(vq);
 
-	if (!V4L2_TYPE_IS_OUTPUT(vq->type))
+	if (!V4L2_TYPE_IS_OUTPUT(vq->type)) {
+		struct cedrus_buffer *cedrus_buf;
+
+		cedrus_buf = vb2_to_cedrus_buffer(ctx->dst_bufs[vb->index]);
+
+		if (cedrus_buf->mv_col_buf_size)
+			dma_free_coherent(ctx->dev->dev,
+					  cedrus_buf->mv_col_buf_size,
+					  cedrus_buf->mv_col_buf,
+					  cedrus_buf->mv_col_buf_dma);
 		ctx->dst_bufs[vb->index] = NULL;
+	}
 }
 
 static int cedrus_buf_out_validate(struct vb2_buffer *vb)
