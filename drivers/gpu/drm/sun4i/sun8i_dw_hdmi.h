@@ -191,7 +191,6 @@ struct sun8i_dw_hdmi {
 	struct regulator		*regulator;
 	const struct sun8i_dw_hdmi_quirks *quirks;
 	struct reset_control		*rst_ctrl;
-	struct platform_device		*connector_pdev;
 	struct gpio_desc		*ddc_en;
 };
 
