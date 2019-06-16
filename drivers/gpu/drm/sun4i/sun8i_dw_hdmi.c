@@ -125,7 +125,7 @@ static int sun8i_dw_hdmi_find_connector_pdev(struct device *dev,
 static int sun8i_dw_hdmi_bind(struct device *dev, struct device *master,
 			      void *data)
 {
-	struct platform_device *pdev = to_platform_device(dev);
+	struct platform_device *pdev = to_platform_device(dev), *connector_pdev;
 	struct dw_hdmi_plat_data *plat_data;
 	struct drm_device *drm = data;
 	struct device_node *phy_node;
@@ -175,12 +175,13 @@ static int sun8i_dw_hdmi_bind(struct device *dev, struct device *master,
 		return PTR_ERR(hdmi->regulator);
 	}
 
-	ret = sun8i_dw_hdmi_find_connector_pdev(dev, &hdmi->connector_pdev);
+	ret = sun8i_dw_hdmi_find_connector_pdev(dev, &connector_pdev);
 	if (!ret) {
-		hdmi->ddc_en = gpiod_get_optional(&hdmi->connector_pdev->dev,
+		hdmi->ddc_en = gpiod_get_optional(&connector_pdev->dev,
 						  "ddc-en", GPIOD_OUT_HIGH);
+		platform_device_put(connector_pdev);
+
 		if (IS_ERR(hdmi->ddc_en)) {
-			platform_device_put(hdmi->connector_pdev);
 			dev_err(dev, "Couldn't get ddc-en gpio\n");
 			return PTR_ERR(hdmi->ddc_en);
 		}
@@ -257,8 +258,6 @@ err_unref_ddc_en:
 	if (hdmi->ddc_en)
 		gpiod_put(hdmi->ddc_en);
 
-	platform_device_put(hdmi->connector_pdev);
-
 	return ret;
 }
 
@@ -276,8 +275,6 @@ static void sun8i_dw_hdmi_unbind(struct device *dev, struct device *master,
 
 	if (hdmi->ddc_en)
 		gpiod_put(hdmi->ddc_en);
-
-	platform_device_put(hdmi->connector_pdev);
 }
 
 static const struct component_ops sun8i_dw_hdmi_ops = {
