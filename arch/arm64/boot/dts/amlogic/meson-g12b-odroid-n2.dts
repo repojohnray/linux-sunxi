@@ -40,7 +40,6 @@
 		blue {
 			label = "n2:blue";
 			gpios = <&gpio_ao GPIOAO_11 GPIO_ACTIVE_HIGH>;
-			linux,default-trigger = "heartbeat";
 		};
 	};
 
