@@ -25,6 +25,8 @@
 #include <linux/of_address.h>
 #include <linux/of_device.h>
 #include <linux/platform_device.h>
+#include <linux/pm_wakeirq.h>
+#include <linux/pm_wakeup.h>
 #include <linux/rtc.h>
 #include <linux/slab.h>
 #include <linux/types.h>
@@ -693,6 +695,13 @@ static int sun6i_rtc_probe(struct platform_device *pdev)
 			       0, dev_name(&pdev->dev), chip);
 	if (ret) {
 		dev_err(&pdev->dev, "Could not request IRQ\n");
+		return ret;
+	}
+
+	device_init_wakeup(chip->dev, true);
+	ret = dev_pm_set_wake_irq(chip->dev, chip->irq);
+	if (ret) {
+		dev_err(&pdev->dev, "Could not set wake IRQ\n");
 		return ret;
 	}
 
