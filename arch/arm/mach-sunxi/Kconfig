@@ -30,6 +30,8 @@ config MACH_SUN6I
 	bool "Allwinner A31 (sun6i) SoCs support"
 	default ARCH_SUNXI
 	select ARM_GIC
+	select IRQ_DOMAIN_HIERARCHY
+	select IRQ_FASTEOI_HIERARCHY_HANDLERS
 	select MFD_SUN6I_PRCM
 	select SUN5I_HSTIMER
 
@@ -46,6 +48,8 @@ config MACH_SUN8I
 	bool "Allwinner sun8i Family SoCs support"
 	default ARCH_SUNXI
 	select ARM_GIC
+	select IRQ_DOMAIN_HIERARCHY
+	select IRQ_FASTEOI_HIERARCHY_HANDLERS
 	select MFD_SUN6I_PRCM
 
 config MACH_SUN9I
