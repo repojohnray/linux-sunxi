@@ -15,6 +15,7 @@
 #include <linux/of.h>
 #include <linux/of_device.h>
 #include <linux/platform_device.h>
+#include <linux/pm.h>
 #include <linux/power_supply.h>
 #include <linux/regmap.h>
 #include <linux/slab.h>
@@ -35,11 +36,14 @@
 
 #define DRVNAME "axp20x-ac-power-supply"
 
+#define ACIN_IRQS 2
+
 struct axp20x_ac_power {
 	struct regmap *regmap;
 	struct power_supply *supply;
 	struct iio_channel *acin_v;
 	struct iio_channel *acin_i;
+	unsigned int irqs[ACIN_IRQS];
 };
 
 static irqreturn_t axp20x_ac_power_irq(int irq, void *devid)
@@ -241,14 +245,53 @@ static const struct axp_data axp813_data = {
 	.acin_adc = false,
 };
 
+int axp20x_ac_power_suspend(struct device *dev)
+{
+	struct axp20x_ac_power *power = dev_get_drvdata(dev);
+	int i;
+
+	/*
+	 * Nested threaded interrupts don't get automatically
+	 * disabled, so we have to do it manually here.
+	 */
+	if (device_may_wakeup(dev)) {
+		for (i = 0; i < ACIN_IRQS; ++i)
+			enable_irq_wake(power->irqs[i]);
+	} else {
+		for (i = 0; i < ACIN_IRQS; ++i)
+			disable_irq(power->irqs[i]);
+	}
+
+	return 0;
+}
+
+int axp20x_ac_power_resume(struct device *dev)
+{
+	struct axp20x_ac_power *power = dev_get_drvdata(dev);
+	int i;
+
+	if (device_may_wakeup(dev)) {
+		for (i = 0; i < ACIN_IRQS; ++i)
+			disable_irq_wake(power->irqs[i]);
+	} else {
+		for (i = 0; i < ACIN_IRQS; ++i)
+			enable_irq(power->irqs[i]);
+	}
+
+	return 0;
+}
+
+static SIMPLE_DEV_PM_OPS(axp20x_ac_power_pm_ops, axp20x_ac_power_suspend,
+			 axp20x_ac_power_resume);
+
 static int axp20x_ac_power_probe(struct platform_device *pdev)
 {
 	struct axp20x_dev *axp20x = dev_get_drvdata(pdev->dev.parent);
 	struct power_supply_config psy_cfg = {};
 	struct axp20x_ac_power *power;
 	const struct axp_data *axp_data;
-	static const char * const irq_names[] = { "ACIN_PLUGIN", "ACIN_REMOVAL",
-		NULL };
+	static const char *const irq_names[ACIN_IRQS] = { "ACIN_PLUGIN",
+							  "ACIN_REMOVAL" };
 	int i, irq, ret;
 
 	if (!of_device_is_available(pdev->dev.of_node))
@@ -295,15 +338,15 @@ static int axp20x_ac_power_probe(struct platform_device *pdev)
 		return PTR_ERR(power->supply);
 
 	/* Request irqs after registering, as irqs may trigger immediately */
-	for (i = 0; irq_names[i]; i++) {
+	for (i = 0; i < ACIN_IRQS; ++i) {
 		irq = platform_get_irq_byname(pdev, irq_names[i]);
 		if (irq < 0) {
 			dev_warn(&pdev->dev, "No IRQ for %s: %d\n",
 				 irq_names[i], irq);
 			continue;
 		}
-		irq = regmap_irq_get_virq(axp20x->regmap_irqc, irq);
-		ret = devm_request_any_context_irq(&pdev->dev, irq,
+		power->irqs[i] = regmap_irq_get_virq(axp20x->regmap_irqc, irq);
+		ret = devm_request_any_context_irq(&pdev->dev, power->irqs[i],
 						   axp20x_ac_power_irq, 0,
 						   DRVNAME, power);
 		if (ret < 0)
@@ -333,6 +376,7 @@ static struct platform_driver axp20x_ac_power_driver = {
 	.driver = {
 		.name = DRVNAME,
 		.of_match_table = axp20x_ac_power_match,
+		.pm = &axp20x_ac_power_pm_ops,
 	},
 };
 
