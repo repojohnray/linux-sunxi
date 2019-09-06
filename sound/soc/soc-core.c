@@ -169,6 +169,7 @@ static void soc_init_component_debugfs(struct snd_soc_component *component)
 		dev_warn(component->dev,
 			"ASoC: Failed to create component debugfs directory: %ld\n",
 			PTR_ERR(component->debugfs_root));
+		component->debugfs_root = NULL;
 		return;
 	}
 
@@ -254,12 +255,12 @@ static void snd_soc_debugfs_init(void)
 		return;
 	}
 
-	if (!debugfs_create_file("dais", 0444, snd_soc_debugfs_root, NULL,
-				 &dai_list_fops))
+	if (IS_ERR(debugfs_create_file("dais", 0444, snd_soc_debugfs_root, NULL,
+				 &dai_list_fops)))
 		pr_warn("ASoC: Failed to create DAI list debugfs file\n");
 
-	if (!debugfs_create_file("components", 0444, snd_soc_debugfs_root, NULL,
-				 &component_list_fops))
+	if (IS_ERR(debugfs_create_file("components", 0444, snd_soc_debugfs_root, NULL,
+				 &component_list_fops)))
 		pr_warn("ASoC: Failed to create component list debugfs file\n");
 }
 
