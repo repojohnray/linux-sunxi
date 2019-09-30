@@ -10,6 +10,7 @@
 #include <linux/mtd/cfi.h>
 #include <linux/mtd/mtd.h>
 #include <linux/spi/spi-mem.h>
+#include <linux/regulator/consumer.h>
 
 /*
  * Manufacturer IDs
@@ -603,6 +604,8 @@ struct spi_nor {
 	const struct spi_nor_controller_ops *controller_ops;
 
 	struct spi_nor_flash_parameter params;
+
+	struct regulator* reg_vdd;
 
 	void *priv;
 };
