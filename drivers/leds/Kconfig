@@ -846,6 +846,13 @@ config LEDS_TPS6105X
 	  It is a single boost converter primarily for white LEDs and
 	  audio amplifiers.
 
+config LEDS_AXP20X
+	tristate "Charger LED support for AXP20X-like PMICs (AXP813, ...)"
+	depends on LEDS_CLASS && MFD_AXP20X
+	help
+	  This option enables support for on-chip LED driver on
+	  AXP20X-like PMICs.
+
 comment "LED Triggers"
 source "drivers/leds/trigger/Kconfig"
 
