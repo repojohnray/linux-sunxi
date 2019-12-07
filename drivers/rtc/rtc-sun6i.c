@@ -650,33 +650,6 @@ static const struct rtc_class_ops sun6i_rtc_ops = {
 	.alarm_irq_enable	= sun6i_rtc_alarm_irq_enable
 };
 
-#ifdef CONFIG_PM_SLEEP
-/* Enable IRQ wake on suspend, to wake up from RTC. */
-static int sun6i_rtc_suspend(struct device *dev)
-{
-	struct sun6i_rtc_dev *chip = dev_get_drvdata(dev);
-
-	if (device_may_wakeup(dev))
-		enable_irq_wake(chip->irq);
-
-	return 0;
-}
-
-/* Disable IRQ wake on resume. */
-static int sun6i_rtc_resume(struct device *dev)
-{
-	struct sun6i_rtc_dev *chip = dev_get_drvdata(dev);
-
-	if (device_may_wakeup(dev))
-		disable_irq_wake(chip->irq);
-
-	return 0;
-}
-#endif
-
-static SIMPLE_DEV_PM_OPS(sun6i_rtc_pm_ops,
-	sun6i_rtc_suspend, sun6i_rtc_resume);
-
 static int sun6i_rtc_probe(struct platform_device *pdev)
 {
 	struct sun6i_rtc_dev *chip = sun6i_rtc;
@@ -695,13 +668,6 @@ static int sun6i_rtc_probe(struct platform_device *pdev)
 			       0, dev_name(&pdev->dev), chip);
 	if (ret) {
 		dev_err(&pdev->dev, "Could not request IRQ\n");
-		return ret;
-	}
-
-	device_init_wakeup(chip->dev, true);
-	ret = dev_pm_set_wake_irq(chip->dev, chip->irq);
-	if (ret) {
-		dev_err(&pdev->dev, "Could not set wake IRQ\n");
 		return ret;
 	}
 
@@ -731,14 +697,21 @@ static int sun6i_rtc_probe(struct platform_device *pdev)
 	/* disable alarm wakeup */
 	writel(0, chip->base + SUN6I_ALARM_CONFIG);
 
-	clk_prepare_enable(chip->losc);
-
 	device_init_wakeup(&pdev->dev, 1);
+
+	ret = dev_pm_set_wake_irq(&pdev->dev, chip->irq);
+	if (ret) {
+		dev_err(&pdev->dev, "Could not set wake IRQ\n");
+		return ret;
+	}
+
+	clk_prepare_enable(chip->losc);
 
 	chip->rtc = devm_rtc_device_register(&pdev->dev, "rtc-sun6i",
 					     &sun6i_rtc_ops, THIS_MODULE);
 	if (IS_ERR(chip->rtc)) {
 		dev_err(&pdev->dev, "unable to register device\n");
+		clk_disable_unprepare(chip->losc);
 		return PTR_ERR(chip->rtc);
 	}
 
@@ -770,7 +743,6 @@ static struct platform_driver sun6i_rtc_driver = {
 	.driver		= {
 		.name		= "sun6i-rtc",
 		.of_match_table = sun6i_rtc_dt_ids,
-		.pm = &sun6i_rtc_pm_ops,
 	},
 };
 builtin_platform_driver(sun6i_rtc_driver);
