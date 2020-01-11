@@ -1108,7 +1108,8 @@ static int sun6i_dsi_probe(struct platform_device *pdev)
 
 	dsi->regulator = devm_regulator_get(dev, "vcc-dsi");
 	if (IS_ERR(dsi->regulator)) {
-		dev_err(dev, "Couldn't get VCC-DSI supply\n");
+		if (PTR_ERR(dsi->regulator) != -EPROBE_DEFER)
+			dev_err(dev, "Couldn't get VCC-DSI supply\n");
 		return PTR_ERR(dsi->regulator);
 	}
 
