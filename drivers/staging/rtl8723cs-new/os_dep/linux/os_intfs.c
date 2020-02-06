@@ -203,7 +203,7 @@ module_param(rtw_rf_config, int, 0644);
 /* 0: not check in watch dog, 1: check in watch dog  */
 int rtw_check_hw_status = 0;
 
-int rtw_low_power = 1;
+int rtw_low_power = 0;
 #ifdef CONFIG_WIFI_TEST
 	int rtw_wifi_spec = 1;/* for wifi test */
 #else
