@@ -17,6 +17,7 @@
 #include <linux/gpio/consumer.h>
 #include <linux/media-bus-format.h>
 #include <linux/module.h>
+#include <linux/of.h>
 #include <video/display_timing.h>
 #include <video/mipi_display.h>
 
@@ -48,7 +49,6 @@ struct xbd599 {
 	struct device *dev;
 	struct drm_panel panel;
 	struct gpio_desc *reset_gpio;
-	struct backlight_device *backlight;
 	bool prepared;
 };
 
@@ -146,20 +146,6 @@ static int xbd599_init_sequence(struct xbd599 *ctx)
 	return 0;
 }
 
-static int xbd599_enable(struct drm_panel *panel)
-{
-	struct xbd599 *ctx = panel_to_xbd599(panel);
-
-	return backlight_enable(ctx->backlight);
-}
-
-static int xbd599_disable(struct drm_panel *panel)
-{
-	struct xbd599 *ctx = panel_to_xbd599(panel);
-
-	return backlight_disable(ctx->backlight);
-}
-
 static int xbd599_unprepare(struct drm_panel *panel)
 {
 	struct xbd599 *ctx = panel_to_xbd599(panel);
@@ -218,12 +204,13 @@ static const struct drm_display_mode xbd599_default_mode = {
 	.type        = DRM_MODE_TYPE_DRIVER | DRM_MODE_TYPE_PREFERRED,
 };
 
-static int xbd599_get_modes(struct drm_panel *panel)
+static int xbd599_get_modes(struct drm_panel *panel,
+			    struct drm_connector *connector)
 {
 	struct xbd599 *ctx = panel_to_xbd599(panel);
 	struct drm_display_mode *mode;
 
-	mode = drm_mode_duplicate(panel->drm, &xbd599_default_mode);
+	mode = drm_mode_duplicate(connector->dev, &xbd599_default_mode);
 	if (!mode) {
 		DRM_DEV_ERROR(ctx->dev, "Failed to add mode\n");
 		return -ENOMEM;
@@ -232,18 +219,17 @@ static int xbd599_get_modes(struct drm_panel *panel)
 	drm_mode_set_name(mode);
 
 	mode->type = DRM_MODE_TYPE_DRIVER | DRM_MODE_TYPE_PREFERRED;
-	panel->connector->display_info.width_mm = mode->width_mm;
-	panel->connector->display_info.height_mm = mode->height_mm;
-	drm_mode_probed_add(panel->connector, mode);
+	drm_mode_probed_add(connector, mode);
+
+	connector->display_info.width_mm = mode->width_mm;
+	connector->display_info.height_mm = mode->height_mm;
 
 	return 1;
 }
 
 static const struct drm_panel_funcs xbd599_drm_funcs = {
-	.disable   = xbd599_disable,
 	.unprepare = xbd599_unprepare,
 	.prepare   = xbd599_prepare,
-	.enable	   = xbd599_enable,
 	.get_modes = xbd599_get_modes,
 };
 
@@ -271,11 +257,12 @@ static int xbd599_probe(struct mipi_dsi_device *dsi)
 	dsi->format = MIPI_DSI_FMT_RGB888;
 	dsi->mode_flags = MIPI_DSI_MODE_VIDEO | MIPI_DSI_MODE_VIDEO_SYNC_PULSE;
 
-	ctx->backlight = devm_of_find_backlight(dev);
-	if (IS_ERR(ctx->backlight))
-		return PTR_ERR(ctx->backlight);
-
 	drm_panel_init(&ctx->panel, dev, &xbd599_drm_funcs, DRM_MODE_CONNECTOR_DSI);
+
+	ret = drm_panel_of_backlight(&ctx->panel);
+	if (ret)
+		return ret;
+
 	drm_panel_add(&ctx->panel);
 
 	ret = mipi_dsi_attach(dsi);
@@ -302,11 +289,6 @@ static void xbd599_shutdown(struct mipi_dsi_device *dsi)
 	ret = xbd599_unprepare(&ctx->panel);
 	if (ret < 0)
 		DRM_DEV_ERROR(&dsi->dev, "Failed to unprepare panel: %d\n",
-			      ret);
-
-	ret = xbd599_disable(&ctx->panel);
-	if (ret < 0)
-		DRM_DEV_ERROR(&dsi->dev, "Failed to disable panel: %d\n",
 			      ret);
 }
 
