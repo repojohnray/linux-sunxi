@@ -336,14 +336,13 @@ static int asoc_simple_init_dai_link_params(struct snd_soc_pcm_runtime *rtd,
 {
 	struct snd_soc_dai_link *dai_link = rtd->dai_link;
 	struct snd_soc_component *component;
-	struct snd_soc_rtdcom_list *rtdcom;
 	struct snd_soc_pcm_stream *params;
 	struct snd_pcm_hardware hw;
 	int stream;
-	int ret;
+	int ret, i;
 
 	/* Only codecs should have non_legacy_dai_naming set. */
-	for_each_rtd_components(rtd, rtdcom, component) {
+	for_each_rtd_components(rtd, i, component) {
 		if (!component->driver->non_legacy_dai_naming)
 			return 0;
 	}
