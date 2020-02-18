@@ -11,6 +11,7 @@
 /* Common DTSI for devices which are based on the P212 reference board. */
 
 #include "meson-gxl-s905x.dtsi"
+#include "meson-gxl-audio-hdmi.dtsi"
 
 / {
 	aliases {
