@@ -63,6 +63,7 @@ struct a711_dev {
 	wait_queue_head_t waitqueue;
 	int got_wakeup;
 	int is_open;
+	struct workqueue_struct *wq;
 	struct work_struct work;
 	int last_request;
 	int is_enabled;
@@ -415,7 +416,7 @@ static ssize_t a711_write(struct file *fp, const char __user *buf,
 	spin_unlock(&a711->lock);
 
 	if (update)
-		schedule_work(&a711->work);
+		queue_work(a711->wq, &a711->work);
 
 	return 1;
 }
@@ -474,7 +475,7 @@ static long a711_ioctl(struct file *fp, unsigned int cmd, unsigned long arg)
 	spin_unlock_irqrestore(&a711->lock, flags);
 
 	if (ret == 0)
-		schedule_work(&a711->work);
+		queue_work(a711->wq, &a711->work);
 
 	return ret;
 }
@@ -646,12 +647,21 @@ static int a711_probe(struct platform_device *pdev)
 		goto err_del_cdev;
 	}
 
+	a711->wq = alloc_workqueue("tbs_a711", WQ_SYSFS, 0);
+	if (!a711->wq) {
+		ret = -ENOMEM;
+		dev_err(dev, "failed to allocate workqueue\n");
+		goto err_free_dev;
+	}
+
 	a711->variant->power_init(a711);
 
 	dev_info(dev, "initialized TBS A711 platform driver");
 
 	return 0;
 
+err_free_dev:
+	device_destroy(a711_class, a711->major);
 err_del_cdev:
 	cdev_del(&a711->cdev);
 err_unreg_chrev_region:
@@ -666,6 +676,7 @@ static int a711_remove(struct platform_device *pdev)
 	struct a711_dev *a711 = platform_get_drvdata(pdev);
 
 	cancel_work_sync(&a711->work);
+	destroy_workqueue(a711->wq);
 	a711_power_down(a711);
 
 	device_destroy(a711_class, a711->major);
@@ -682,6 +693,7 @@ static void a711_shutdown(struct platform_device *pdev)
 {
 	struct a711_dev *a711 = platform_get_drvdata(pdev);
 
+	cancel_work_sync(&a711->work);
 	a711_power_down(a711);
 }
 
