@@ -31,6 +31,7 @@ struct a711_dev;
 
 struct a711_variant {
 	u32 reset_duration;
+	unsigned int powerdown_delay;
 	int (*power_init)(struct a711_dev* a711);
 	int (*power_up)(struct a711_dev* a711);
 	int (*power_down)(struct a711_dev* a711);
@@ -67,6 +68,8 @@ struct a711_dev {
 	struct work_struct work;
 	int last_request;
 	int is_enabled;
+
+	unsigned int powerdown_delay;
 };
 
 static int a711_generic_reset(struct a711_dev* a711)
@@ -203,7 +206,7 @@ static int a711_eg25_power_down(struct a711_dev* a711)
 	gpiod_set_value(a711->pwrkey_gpio, 0);
 
 	// wait 30s for modem shutdown (usually shuts down in a few seconds)
-	msleep(30000);
+	msleep(a711->powerdown_delay);
 
 	// if it comes to powerdown we know we have a regulator configured
 	// so we don't handle the else branch
@@ -224,6 +227,7 @@ static const struct a711_variant a711_eg25_variant = {
 	.power_down = a711_eg25_power_down,
 	.reset = a711_generic_reset,
 	.reset_duration = 20,
+	.powerdown_delay = 30000,
 };
 
 static void a711_reset(struct a711_dev* a711)
@@ -535,6 +539,94 @@ static irqreturn_t a711_wakeup_isr(int irq, void *dev_id)
 	return IRQ_HANDLED;
 }
 
+/* Sysfs attributes */
+
+static ssize_t powered_show(struct device *dev,
+				    struct device_attribute *attr, char *buf)
+{
+	struct a711_dev *a711 = platform_get_drvdata(to_platform_device(dev));
+	unsigned long flags;
+	unsigned int powered;
+
+	spin_lock_irqsave(&a711->lock, flags);
+	powered = !!a711->is_enabled;
+	spin_unlock_irqrestore(&a711->lock, flags);
+
+	return scnprintf(buf, PAGE_SIZE, "%u\n", powered);
+}
+
+static ssize_t powered_store(struct device *dev,
+				     struct device_attribute *attr,
+				     const char *buf, size_t len)
+{
+	struct a711_dev *a711 = platform_get_drvdata(to_platform_device(dev));
+	unsigned long flags;
+	bool status;
+	int ret;
+
+	ret = kstrtobool(buf, &status);
+	if (ret)
+		return ret;
+
+	spin_lock_irqsave(&a711->lock, flags);
+	a711->last_request = status ? A711_REQ_PWUP : A711_REQ_PWDN;
+	spin_unlock_irqrestore(&a711->lock, flags);
+
+	queue_work(a711->wq, &a711->work);
+
+	return len;
+}
+
+static ssize_t powerdown_safety_delay_show(struct device *dev,
+				 struct device_attribute *attr, char *buf)
+{
+	struct a711_dev *a711 = platform_get_drvdata(to_platform_device(dev));
+	unsigned long flags;
+	unsigned int delay;
+
+	spin_lock_irqsave(&a711->lock, flags);
+	delay = a711->powerdown_delay;
+	spin_unlock_irqrestore(&a711->lock, flags);
+
+	return scnprintf(buf, PAGE_SIZE, "%u\n", delay);
+}
+
+static ssize_t powerdown_safety_delay_store(struct device *dev,
+				  struct device_attribute *attr,
+				  const char *buf, size_t len)
+{
+	struct a711_dev *a711 = platform_get_drvdata(to_platform_device(dev));
+	unsigned long flags;
+	unsigned int delay;
+	int ret;
+
+	ret = kstrtouint(buf, 0, &delay);
+	if (ret)
+		return ret;
+
+	if (delay > 120000)
+		return -ERANGE;
+
+	spin_lock_irqsave(&a711->lock, flags);
+	a711->powerdown_delay = delay;
+	spin_unlock_irqrestore(&a711->lock, flags);
+
+	return len;
+}
+
+static DEVICE_ATTR_RW(powered);
+static DEVICE_ATTR_RW(powerdown_safety_delay);
+
+static struct attribute *a711_attrs[] = {
+	&dev_attr_powered.attr,
+	&dev_attr_powerdown_safety_delay.attr,
+	NULL,
+};
+
+static const struct attribute_group a711_group = {
+	.attrs = a711_attrs,
+};
+
 static int a711_probe(struct platform_device *pdev)
 {
 	struct a711_dev *a711;
@@ -551,6 +643,7 @@ static int a711_probe(struct platform_device *pdev)
 	a711->variant = of_device_get_match_data(&pdev->dev);
 	if (!a711->variant)
 		return -EINVAL;
+	a711->powerdown_delay = a711->variant->powerdown_delay;
 
 	a711->dev = dev;
 	platform_set_drvdata(pdev, a711);
@@ -625,6 +718,10 @@ static int a711_probe(struct platform_device *pdev)
 
 		a711->regulator = NULL;
 	}
+
+	ret = devm_device_add_group(dev, &a711_group);
+	if (ret)
+		return ret;
 
 	// create char device
 	ret = alloc_chrdev_region(&a711->major, 0, 1, "a711");
