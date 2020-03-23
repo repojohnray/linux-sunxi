@@ -311,6 +311,7 @@ static int do_read_inode(struct inode *inode)
 	struct f2fs_inode *ri;
 	projid_t i_projid;
 	int err;
+	int i;
 
 	/* Check if ino is within scope */
 	if (f2fs_check_nid_range(sbi, inode->i_ino))
@@ -345,7 +346,8 @@ static int do_read_inode(struct inode *inode)
 	fi->i_flags = le32_to_cpu(ri->i_flags);
 	if (S_ISREG(inode->i_mode))
 		fi->i_flags &= ~F2FS_PROJINHERIT_FL;
-	fi->flags = 0;
+	for (i = 0; i < FI_ARRAY_SIZE; i++)
+		fi->flags[i] = 0;
 	fi->i_advise = ri->i_advise;
 	fi->i_pino = le32_to_cpu(ri->i_pino);
 	fi->i_dir_level = ri->i_dir_level;
