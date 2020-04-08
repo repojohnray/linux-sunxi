@@ -71,6 +71,33 @@
 		};
 	};
 
+	modem {
+		compatible = "custom,power-manager-eg25";
+		enable-gpios = <&pio 7 8 GPIO_ACTIVE_LOW>; /* PH8 */
+		reset-gpios = <&pio 2 4 GPIO_ACTIVE_HIGH>; /* PC4 */
+		pwrkey-gpios = <&pio 1 3 GPIO_ACTIVE_HIGH>; /* PB3 */
+		
+		// this is really a wakeup->bb signal and we don't use this yet
+		//sleep-gpios = <&pio 7 7 GPIO_ACTIVE_HIGH>; /* PH7 */
+
+		// power manager can optionally use gpio change interrupts to signal userspace the modem
+		// chaged state, but we don't want this yet
+		//wakeup-gpios = <&pio 1 2 GPIO_ACTIVE_HIGH>; /* PB2-RI */
+		//dtr-gpios = <&r_pio 0 6 GPIO_ACTIVE_HIGH>; /* PL6-DTR */
+		
+		power-supply = <&reg_vbat_bb>; /* PL7 */
+		char-device-name = "pwr-modem";
+	};
+
+	reg_vbat_bb: vbat-bb {
+		compatible = "regulator-fixed";
+		regulator-name = "vbat-bb";
+		regulator-min-microvolt = <3500000>;
+		regulator-max-microvolt = <3500000>;
+		gpio = <&r_pio 0 7 GPIO_ACTIVE_HIGH>; /* PL7 */
+		enable-active-high;
+	};
+
 	reg_vbat_wifi: vbat-wifi {
 		compatible = "regulator-fixed";
 		regulator-min-microvolt = <3300000>;
