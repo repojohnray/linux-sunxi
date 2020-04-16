@@ -1192,6 +1192,26 @@ static int mmc_sd_suspend(struct mmc_host *host)
 }
 
 /*
+ * Callback for shutdown
+ */
+static int mmc_sd_shutdown(struct mmc_host *host)
+{
+	mmc_claim_host(host);
+
+	if (mmc_card_suspended(host->card))
+		goto out;
+
+	mmc_power_off(host);
+	mmc_card_set_suspended(host->card);
+
+	pm_runtime_disable(&host->card->dev);
+	pm_runtime_set_suspended(&host->card->dev);
+
+out:
+	return 0;
+}
+
+/*
  * This function tries to determine if the same card is still present
  * and, if so, restore all state to it.
  */
@@ -1269,7 +1289,7 @@ static const struct mmc_bus_ops mmc_sd_ops = {
 	.suspend = mmc_sd_suspend,
 	.resume = mmc_sd_resume,
 	.alive = mmc_sd_alive,
-	.shutdown = mmc_sd_suspend,
+	.shutdown = mmc_sd_shutdown,
 	.hw_reset = mmc_sd_hw_reset,
 };
 
