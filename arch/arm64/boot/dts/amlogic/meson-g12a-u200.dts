@@ -6,6 +6,7 @@
 /dts-v1/;
 
 #include "meson-g12a.dtsi"
+#include "meson-g12-audio-hdmi-spdif.dtsi"
 #include <dt-bindings/gpio/gpio.h>
 #include <dt-bindings/gpio/meson-g12a-gpio.h>
 
