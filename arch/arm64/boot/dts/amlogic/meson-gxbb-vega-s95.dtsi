@@ -4,6 +4,7 @@
  */
 
 #include "meson-gxbb.dtsi"
+#include "meson-gxbb-audio-hdmi-spdif.dtsi"
 
 / {
 	compatible = "tronsmart,vega-s95", "amlogic,meson-gxbb";
