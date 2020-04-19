@@ -8,6 +8,8 @@
  * the pin-compatible S912 (GXM) or S905D (GXL) SoCs.
  */
 
+#include "meson-gxl-audio-hdmi-spdif.dtsi"
+
 / {
 	aliases {
 		serial0 = &uart_AO;
