@@ -6,6 +6,7 @@
 /dts-v1/;
 
 #include "meson-gxbb.dtsi"
+#include "meson-gxbb-audio-hdmi.dtsi"
 #include <dt-bindings/gpio/gpio.h>
 
 / {
