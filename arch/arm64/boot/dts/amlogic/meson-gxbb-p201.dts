@@ -8,6 +8,7 @@
 /dts-v1/;
 
 #include "meson-gxbb-p20x.dtsi"
+#include "meson-gxbb-audio-hdmi.dtsi"
 
 / {
 	compatible = "amlogic,p201", "amlogic,meson-gxbb";
