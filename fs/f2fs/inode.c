@@ -311,6 +311,7 @@ static int do_read_inode(struct inode *inode)
 	struct f2fs_inode *ri;
 	projid_t i_projid;
 	int err;
+	int i;
 
 	/* Check if ino is within scope */
 	if (f2fs_check_nid_range(sbi, inode->i_ino))

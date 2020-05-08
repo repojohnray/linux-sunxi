@@ -2555,6 +2555,11 @@ static inline void __mark_inode_dirty_flag(struct inode *inode,
 	}
 }
 
+static inline void __set_inode_flag(struct inode *inode, int flag)
+{
+	test_and_set_bit(flag, F2FS_I(inode)->flags);
+}
+
 static inline void set_inode_flag(struct inode *inode, int flag)
 {
 	test_and_set_bit(flag, F2FS_I(inode)->flags);
@@ -2656,8 +2661,6 @@ static inline void f2fs_i_pino_write(struct inode *inode, nid_t pino)
 
 static inline void get_inline_info(struct inode *inode, struct f2fs_inode *ri)
 {
-	struct f2fs_inode_info *fi = F2FS_I(inode);
-
 	if (ri->i_inline & F2FS_INLINE_XATTR)
 		set_bit(FI_INLINE_XATTR, fi->flags);
 	if (ri->i_inline & F2FS_INLINE_DATA)
