@@ -239,6 +239,13 @@
 		char-device-name = "pwr-modem";
 	};
 
+	reg_anx1v0: anx1v0 {
+		compatible = "regulator-fixed";
+		regulator-name = "anx1v0";
+		regulator-min-microvolt = <1000000>;
+		regulator-max-microvolt = <1000000>;
+	};
+
 	reg_usb_5v: usb-5v {
 		compatible = "regulator-fixed";
 		regulator-name = "usb-5v";
@@ -246,16 +253,6 @@
 		regulator-max-microvolt = <5000000>;
 		gpio = <&pio 3 8 GPIO_ACTIVE_HIGH>; /* PD8 */
 		enable-active-high;
-	};
-
-	reg_usb0_vbus: usb0-vbus {
-		compatible = "regulator-fixed";
-		regulator-name = "usb0-vbus";
-		regulator-min-microvolt = <5000000>;
-		regulator-max-microvolt = <5000000>;
-		gpio = <&pio 3 6 GPIO_ACTIVE_HIGH>; /* PD6 */
-		enable-active-high;
-		vin-supply = <&reg_usb_5v>;
 	};
 
 	reg_vbat_bb: vbat-bb {
@@ -457,16 +454,6 @@
 		VDDIO-supply = <&reg_ldo_io0>;
 		touchscreen-size-x = <720>;
 		touchscreen-size-y = <1440>;
-	};
-
-	anx7688@28 {
-		compatible = "analogix,anx7688";
-		reg = <0x28>;
-		interrupt-parent = <&r_pio>;
-		interrupts = <0 8 IRQ_TYPE_EDGE_BOTH>, <0 11 IRQ_TYPE_EDGE_FALLING>; /* PL8, PL11 */
-		cabledet-gpios = <&r_pio 0 8 GPIO_ACTIVE_HIGH>; /* PL8 */
-		enable-gpios = <&pio 3 10 GPIO_ACTIVE_LOW>; /* PD10 */
-		reset-gpios = <&r_pio 0 9 GPIO_ACTIVE_LOW>; /* PL9 */
 	};
 };
 
@@ -839,7 +826,7 @@
 };
 
 &usb_otg {
-	dr_mode = "peripheral";
+	dr_mode = "otg";
 	status = "okay";
 };
 
