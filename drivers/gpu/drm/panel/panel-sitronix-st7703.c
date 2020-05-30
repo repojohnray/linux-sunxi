@@ -59,6 +59,7 @@ struct st7703 {
 	struct regulator_bulk_data *supplies;
 	const struct st7703_panel_desc *desc;
 	bool prepared;
+	bool hw_preenabled;
 };
 
 static inline struct st7703 *panel_to_st7703(struct drm_panel *panel)
@@ -137,19 +138,18 @@ static int st7703_init_sequence(struct st7703 *ctx)
 			  0x18, 0x00, 0x09, 0x0D, 0x23, 0x27, 0x3C, 0x41,
 			  0x35, 0x07, 0x0D, 0x0E, 0x12, 0x13, 0x10, 0x12,
 			  0x12, 0x18);
-	msleep(20);
 
 	ret = mipi_dsi_dcs_exit_sleep_mode(dsi);
 	if (ret < 0) {
 		DRM_DEV_ERROR(dev, "Failed to exit sleep mode\n");
 		return ret;
 	}
-	msleep(250);
+
+	msleep(120);
 
 	ret = mipi_dsi_dcs_set_display_on(dsi);
 	if (ret)
 		return ret;
-	msleep(50);
 
 	DRM_DEV_DEBUG_DRIVER(dev, "Panel init sequence done\n");
 	return 0;
@@ -167,11 +167,13 @@ static int st7703_prepare(struct drm_panel *panel)
 	if (ret)
 		return ret;
 
+	if (!ctx->hw_preenabled) {
 	DRM_DEV_DEBUG_DRIVER(ctx->dev, "Resetting the panel\n");
 	gpiod_set_value_cansleep(ctx->reset_gpio, 1);
 	usleep_range(20, 40);
 	gpiod_set_value_cansleep(ctx->reset_gpio, 0);
-	msleep(20);
+	msleep(10);
+	}
 
 	ctx->prepared = true;
 
@@ -183,12 +185,16 @@ static int st7703_enable(struct drm_panel *panel)
 	struct st7703 *ctx = panel_to_st7703(panel);
 	int ret;
 
+
+	if (!ctx->hw_preenabled) {
 	ret = st7703_init_sequence(ctx);
 	if (ret < 0) {
 		DRM_DEV_ERROR(ctx->dev, "Panel init sequence failed: %d\n",
 			      ret);
 		return ret;
 	}
+	}
+	ctx->hw_preenabled = false;
 
 	return 0;
 }
@@ -282,6 +288,7 @@ static int st7703_probe(struct mipi_dsi_device *dsi)
 	const struct st7703_panel_desc *desc;
 	struct device *dev = &dsi->dev;
 	struct st7703 *ctx;
+	u32 fb_start;
 	int i, ret;
 
 	ctx = devm_kzalloc(dev, sizeof(*ctx), GFP_KERNEL);
@@ -294,6 +301,12 @@ static int st7703_probe(struct mipi_dsi_device *dsi)
 	dsi->mode_flags = desc->flags;
 	dsi->format = desc->format;
 	dsi->lanes = desc->lanes;
+
+	ret = of_property_read_u32_index(of_chosen, "p-boot,framebuffer-start", 0, &fb_start);
+	if (ret == 0) {
+		/* the display pipeline is already initialized by p-boot */
+		ctx->hw_preenabled = true;
+	}
 
 	ctx->supplies = devm_kcalloc(&dsi->dev, desc->num_supplies,
 					sizeof(*ctx->supplies),
