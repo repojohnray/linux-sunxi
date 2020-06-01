@@ -210,11 +210,11 @@ static int rtl8211f_config_init(struct phy_device *phydev)
 		dev_err(dev, "Failed to update the TX delay register\n");
 		return ret;
 	} else if (ret) {
-		dev_dbg(dev,
+		dev_err(dev,
 			"%s 2ns TX delay (and changing the value from pin-strapping RXD1 or the bootloader)\n",
 			val_txdly ? "Enabling" : "Disabling");
 	} else {
-		dev_dbg(dev,
+		dev_err(dev,
 			"2ns TX delay was already %s (by pin-strapping RXD1 or bootloader configuration)\n",
 			val_txdly ? "enabled" : "disabled");
 	}
@@ -225,11 +225,11 @@ static int rtl8211f_config_init(struct phy_device *phydev)
 		dev_err(dev, "Failed to update the RX delay register\n");
 		return ret;
 	} else if (ret) {
-		dev_dbg(dev,
+		dev_err(dev,
 			"%s 2ns RX delay (and changing the value from pin-strapping RXD0 or the bootloader)\n",
 			val_rxdly ? "Enabling" : "Disabling");
 	} else {
-		dev_dbg(dev,
+		dev_err(dev,
 			"2ns RX delay was already %s (by pin-strapping RXD0 or bootloader configuration)\n",
 			val_rxdly ? "enabled" : "disabled");
 	}
