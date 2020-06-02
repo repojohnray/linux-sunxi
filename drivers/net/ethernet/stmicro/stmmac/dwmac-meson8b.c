@@ -425,6 +425,9 @@ static int meson8b_dwmac_probe(struct platform_device *pdev)
 		goto err_remove_config_dt;
 	}
 
+	dev_err(&pdev->dev, "PRG_ETH0 value at init = 0x%08x\n", readl(dwmac->regs + PRG_ETH0));
+	dev_err(&pdev->dev, "PRG_ETH1 value at init = 0x%08x\n", readl(dwmac->regs + 0x04));
+
 	ret = meson8b_init_rgmii_tx_clk(dwmac);
 	if (ret)
 		goto err_remove_config_dt;
