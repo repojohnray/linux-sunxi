@@ -164,6 +164,7 @@ properties:
           - enum:
               - amediatech,x96-air-2g
               - amediatech,x96-air-4g
+              - cyx,a95xf3-air
               - hardkernel,odroid-c4
               - khadas,vim3l
               - seirobotics,sei610
