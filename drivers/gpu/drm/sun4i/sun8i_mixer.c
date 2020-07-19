@@ -346,11 +346,23 @@ static const struct sunxi_engine_ops sun8i_engine_ops = {
 	.layers_init	= sun8i_layers_init,
 };
 
+static bool sun8i_mixer_volatile_reg(struct device *dev, unsigned int reg)
+{
+	switch (reg) {
+	case SUN8I_MIXER_GLOBAL_STATUS:
+	case SUN8I_MIXER_GLOBAL_DBUFF:
+		return true;
+	}
+	return false;
+}
+
 static const struct regmap_config sun8i_mixer_regmap_config = {
+	.cache_type	= REGCACHE_FLAT,
 	.reg_bits	= 32,
 	.val_bits	= 32,
 	.reg_stride	= 4,
 	.max_register	= 0xffffc, /* guessed */
+	.volatile_reg	= sun8i_mixer_volatile_reg,
 };
 
 static int sun8i_mixer_of_get_id(struct device_node *node)
