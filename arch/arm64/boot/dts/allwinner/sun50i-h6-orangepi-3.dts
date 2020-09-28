@@ -153,6 +153,7 @@
 	phy-io-supply = <&reg_gmac_2v5>;
 	allwinner,rx-delay-ps = <200>;
 	allwinner,tx-delay-ps = <200>;
+&hdmi_sound {
 	status = "okay";
 };
 
@@ -164,6 +165,12 @@
 		reset-gpios = <&pio 3 14 GPIO_ACTIVE_LOW>; /* PD14 */
 		reset-assert-us = <15000>;
 		reset-deassert-us = <40000>;
+	};
+};
+
+&hdmi_out {
+	hdmi_out_con: endpoint {
+		remote-endpoint = <&hdmi_con_in>;
 	};
 };
 
