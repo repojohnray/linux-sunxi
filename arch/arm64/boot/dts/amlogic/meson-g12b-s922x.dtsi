@@ -11,16 +11,6 @@
 		compatible = "operating-points-v2";
 		opp-shared;
 
-		opp-500000000 {
-			opp-hz = /bits/ 64 <500000000>;
-			opp-microvolt = <731000>;
-		};
-
-		opp-667000000 {
-			opp-hz = /bits/ 64 <667000000>;
-			opp-microvolt = <731000>;
-		};
-
 		opp-1000000000 {
 			opp-hz = /bits/ 64 <1000000000>;
 			opp-microvolt = <731000>;
@@ -60,16 +50,6 @@
 	cpub_opp_table_1: opp-table-1 {
 		compatible = "operating-points-v2";
 		opp-shared;
-
-		opp-500000000 {
-			opp-hz = /bits/ 64 <500000000>;
-			opp-microvolt = <751000>;
-		};
-
-		opp-667000000 {
-			opp-hz = /bits/ 64 <667000000>;
-			opp-microvolt = <751000>;
-		};
 
 		opp-1000000000 {
 			opp-hz = /bits/ 64 <1000000000>;
