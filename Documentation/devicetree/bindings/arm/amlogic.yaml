@@ -169,6 +169,7 @@ properties:
               - hardkernel,odroid-hc4
               - khadas,vim3l
               - seirobotics,sei610
+              - sinovoip,bananapi-m5
           - const: amlogic,sm1
 
       - description: Boards with the Amlogic Meson A1 A113L SoC
