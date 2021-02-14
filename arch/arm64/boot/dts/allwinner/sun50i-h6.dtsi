@@ -16,6 +16,12 @@
 	#address-cells = <1>;
 	#size-cells = <1>;
 
+	aliases {
+		mmc0 = &mmc0;
+		mmc1 = &mmc1;
+		mmc2 = &mmc2;
+	};
+
 	ac200_pwm_clk: ac200_clk {
 		compatible = "pwm-clock";
 		#clock-cells = <0>;
