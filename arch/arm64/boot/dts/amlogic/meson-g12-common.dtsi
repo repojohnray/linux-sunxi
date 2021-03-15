@@ -2317,6 +2317,7 @@
 				clocks = <&xtal>, <&clkc CLKID_UART0>, <&xtal>;
 				clock-names = "xtal", "pclk", "baud";
 				status = "disabled";
+				amlogic,uart-fifosize = <128>;
 			};
 		};
 
