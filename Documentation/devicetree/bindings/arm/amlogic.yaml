@@ -178,6 +178,8 @@ properties:
               - azw,gsking-x
               - azw,gtking
               - azw,gtking-pro
+              - dream,dreambox-one
+              - dream,dreambox-two
               - hardkernel,odroid-n2
               - hardkernel,odroid-n2-plus
               - khadas,vim3
