@@ -101,7 +101,7 @@
 	pinctrl-0 = <&ext_rmii_pins>;
 	phy-mode = "rmii";
 	phy-handle = <&ext_rmii_phy>;
-	status = "okay";
+	status = "disable";
 };
 
 &gpu {
