@@ -37,6 +37,7 @@
 struct ac200_ephy_dev {
 	struct phy_driver	*ephy;
 	struct regmap		*regmap;
+	u16 			calib;
 };
 
 static char *ac200_phy_name = "AC200 EPHY";
@@ -70,11 +71,40 @@ static void disable_802_3az_ieee(struct phy_device *phydev)
 	phy_write(phydev, 0x18, 0x0000);
 }
 
+static int ac200_ephy_init(const struct ac200_ephy_dev *priv)
+{
+	int ret;
+
+	ret = regmap_write(priv->regmap, AC200_SYS_EPHY_CTL0,
+			   AC200_EPHY_RESET_INVALID |
+			   AC200_EPHY_SYSCLK_GATING);
+	if (ret)
+		return ret;
+
+	ret = regmap_write(priv->regmap, AC200_SYS_EPHY_CTL1,
+			   AC200_EPHY_E_EPHY_MII_IO_EN |
+			   AC200_EPHY_E_LNK_LED_IO_EN |
+			   AC200_EPHY_E_SPD_LED_IO_EN |
+			   AC200_EPHY_E_DPX_LED_IO_EN);
+	if (ret)
+		return ret;
+
+	return regmap_write(priv->regmap, AC200_EPHY_CTL,
+			    AC200_EPHY_LED_POL |
+			    AC200_EPHY_CLK_SEL |
+			    AC200_EPHY_ADDR(1) |
+			    AC200_EPHY_CALIB(priv->calib));
+}
+
 static int ac200_ephy_config_init(struct phy_device *phydev)
 {
 	const struct ac200_ephy_dev *priv = phydev->drv->driver_data;
 	unsigned int value;
 	int ret;
+
+	ret = ac200_ephy_init(priv);
+	if (ret)
+		return ret;
 
 	phy_write(phydev, 0x1f, 0x0100);	/* Switch to Page 1 */
 	phy_write(phydev, 0x12, 0x4824);	/* Disable APS */
@@ -122,8 +152,8 @@ static int ac200_ephy_probe(struct platform_device *pdev)
 	struct ac200_ephy_dev *priv;
 	struct nvmem_cell *calcell;
 	struct phy_driver *ephy;
-	u16 *caldata, calib;
 	size_t callen;
+	u16 *caldata;
 	int ret;
 
 	priv = devm_kzalloc(dev, sizeof(*priv), GFP_KERNEL);
@@ -153,7 +183,7 @@ static int ac200_ephy_probe(struct platform_device *pdev)
 		return -EINVAL;
 	}
 
-	calib = *caldata + 3;
+	priv->calib = *caldata + 3;
 	kfree(caldata);
 
 	ephy->phy_id = AC200_EPHY_ID;
@@ -169,25 +199,7 @@ static int ac200_ephy_probe(struct platform_device *pdev)
 	priv->regmap = ac200->regmap;
 	platform_set_drvdata(pdev, priv);
 
-	ret = regmap_write(ac200->regmap, AC200_SYS_EPHY_CTL0,
-			   AC200_EPHY_RESET_INVALID |
-			   AC200_EPHY_SYSCLK_GATING);
-	if (ret)
-		return ret;
-
-	ret = regmap_write(ac200->regmap, AC200_SYS_EPHY_CTL1,
-			   AC200_EPHY_E_EPHY_MII_IO_EN |
-			   AC200_EPHY_E_LNK_LED_IO_EN |
-			   AC200_EPHY_E_SPD_LED_IO_EN |
-			   AC200_EPHY_E_DPX_LED_IO_EN);
-	if (ret)
-		return ret;
-
-	ret = regmap_write(ac200->regmap, AC200_EPHY_CTL,
-			   AC200_EPHY_LED_POL |
-			   AC200_EPHY_CLK_SEL |
-			   AC200_EPHY_ADDR(1) |
-			   AC200_EPHY_CALIB(calib));
+	ret = ac200_ephy_init(priv);
 	if (ret)
 		return ret;
 

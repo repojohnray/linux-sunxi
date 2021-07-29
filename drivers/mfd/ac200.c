@@ -41,22 +41,43 @@ static const struct regmap_config ac200_regmap_config = {
 
 static struct mfd_cell ac200_cells[] = {
 	{
-		.name		= "ac200-codec",
-		.of_compatible	= "x-powers,ac200-codec",
-	}, {
-		.name		= "ac200-efuse",
-		.of_compatible	= "x-powers,ac200-efuse",
-	}, {
 		.name		= "ac200-ephy",
 		.of_compatible	= "x-powers,ac200-ephy",
-	}, {
-		.name		= "ac200-rtc",
-		.of_compatible	= "x-powers,ac200-rtc",
-	}, {
-		.name		= "ac200-tve",
-		.of_compatible	= "x-powers,ac200-tve",
 	},
 };
+
+static int ac200_enable(struct i2c_client *i2c)
+{
+	struct ac200_dev *ac200 = i2c_get_clientdata(i2c);
+	int ret;
+
+	ret = clk_prepare_enable(ac200->clk);
+	if (ret)
+		return ret;
+
+	ret = regmap_write(ac200->regmap, AC200_SYS_CONTROL, 0);
+	if (ret)
+		goto err;
+
+	ret = regmap_write(ac200->regmap, AC200_SYS_CONTROL, 1);
+	if (ret)
+		goto err;
+
+	return 0;
+
+err:
+	clk_disable_unprepare(ac200->clk);
+	return ret;
+}
+
+static void ac200_disable(struct i2c_client *i2c)
+{
+	struct ac200_dev *ac200 = i2c_get_clientdata(i2c);
+
+	regmap_write(ac200->regmap, AC200_SYS_CONTROL, 0);
+
+	clk_disable_unprepare(ac200->clk);
+}
 
 static int ac200_i2c_probe(struct i2c_client *i2c,
 			   const struct i2c_device_id *id)
@@ -85,42 +106,47 @@ static int ac200_i2c_probe(struct i2c_client *i2c,
 		return ret;
 	}
 
-	ret = clk_prepare_enable(ac200->clk);
+	ret = ac200_enable(i2c);
 	if (ret)
 		return ret;
-
-	ret = regmap_write(ac200->regmap, AC200_SYS_CONTROL, 0);
-	if (ret)
-		goto err;
-
-	ret = regmap_write(ac200->regmap, AC200_SYS_CONTROL, 1);
-	if (ret)
-		goto err;
 
 	ret = devm_mfd_add_devices(dev, PLATFORM_DEVID_NONE, ac200_cells,
 				   ARRAY_SIZE(ac200_cells), NULL, 0, NULL);
 	if (ret) {
 		dev_err(dev, "Failed to add MFD devices: %d\n", ret);
-		goto err;
+		ac200_disable(i2c);
 	}
 
 	return 0;
-
-err:
-	clk_disable_unprepare(ac200->clk);
-	return ret;
 }
 
 static int ac200_i2c_remove(struct i2c_client *i2c)
 {
-	struct ac200_dev *ac200 = i2c_get_clientdata(i2c);
-
-	regmap_write(ac200->regmap, AC200_SYS_CONTROL, 0);
-
-	clk_disable_unprepare(ac200->clk);
+	ac200_disable(i2c);
 
 	return 0;
 }
+
+#ifdef CONFIG_PM_SLEEP
+static int ac200_i2c_suspend(struct device *dev)
+{
+	struct i2c_client *i2c = to_i2c_client(dev);
+
+	ac200_disable(i2c);
+
+	return 0;
+}
+
+static int ac200_i2c_resume(struct device *dev)
+{
+	struct i2c_client *i2c = to_i2c_client(dev);
+
+	return ac200_enable(i2c);
+}
+#endif /* CONFIG_PM_SLEEP */
+
+static SIMPLE_DEV_PM_OPS(ac200_pm_ops, ac200_i2c_suspend,
+			 ac200_i2c_resume);
 
 static const struct i2c_device_id ac200_ids[] = {
 	{ "ac200", },
@@ -138,6 +164,7 @@ static struct i2c_driver ac200_i2c_driver = {
 	.driver = {
 		.name	= "ac200",
 		.of_match_table	= of_match_ptr(ac200_of_match),
+		.pm = &ac200_pm_ops,
 	},
 	.probe	= ac200_i2c_probe,
 	.remove = ac200_i2c_remove,
