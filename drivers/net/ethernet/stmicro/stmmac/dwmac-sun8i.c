@@ -1313,7 +1313,16 @@ static struct platform_driver sun8i_dwmac_driver = {
 		.of_match_table = sun8i_dwmac_match,
 	},
 };
-module_platform_driver(sun8i_dwmac_driver);
+static int __init sun8i_dwmac_driver_init(void)
+{
+	return platform_driver_register(&sun8i_dwmac_driver);
+}
+late_initcall(sun8i_dwmac_driver_init);
+static void __exit sun8i_dwmac_driver_exit(void)
+{
+	platform_driver_unregister(&sun8i_dwmac_driver);
+}
+module_exit(sun8i_dwmac_driver_exit);
 
 MODULE_AUTHOR("Corentin Labbe <clabbe.montjoie@gmail.com>");
 MODULE_DESCRIPTION("Allwinner sun8i DWMAC specific glue layer");
