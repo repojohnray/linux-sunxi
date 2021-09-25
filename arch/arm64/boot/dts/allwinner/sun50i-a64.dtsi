@@ -1196,6 +1196,7 @@
 			#size-cells = <1>;
 			dma-ranges = <0x00000000 0x40000000 0xc0000000>;
 			#interconnect-cells = <1>;
+			status = "disabled";
 		};
 
 		csi: csi@1cb0000 {
