@@ -56,6 +56,8 @@ config DRM_SUN8I_DW_HDMI
 	tristate "Support for Allwinner version of DesignWare HDMI"
 	depends on DRM_SUN4I
 	select DRM_DW_HDMI
+	select CEC_CORE
+	select CEC_PIN
 	help
 	  Choose this option if you have an Allwinner SoC with the
 	  DesignWare HDMI controller with custom HDMI PHY. If M is
