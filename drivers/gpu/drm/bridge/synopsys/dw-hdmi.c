@@ -3152,6 +3152,14 @@ static irqreturn_t dw_hdmi_irq(int irq, void *dev_id)
 			drm_helper_hpd_irq_event(hdmi->bridge.dev);
 			drm_bridge_hpd_notify(&hdmi->bridge, status);
 		}
+
+		if (status == connector_status_disconnected &&
+		    (phy_stat & HDMI_PHY_RX_SENSE) &&
+		    (phy_int_pol & HDMI_PHY_RX_SENSE)) {
+			mutex_lock(&hdmi->cec_notifier_mutex);
+			cec_notifier_phys_addr_invalidate(hdmi->cec_notifier);
+			mutex_unlock(&hdmi->cec_notifier_mutex);
+		}
 	}
 
 	hdmi_writeb(hdmi, intr_stat, HDMI_IH_PHY_STAT0);
