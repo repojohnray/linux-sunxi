@@ -961,9 +961,13 @@ static irqreturn_t vdec_isr(int irq, void *data)
 	struct amvdec_core *core = data;
 	struct amvdec_session *sess = core->cur_sess;
 
-	sess->last_irq_jiffies = get_jiffies_64();
+	if (sess) {
+		sess->last_irq_jiffies = get_jiffies_64();
 
-	return sess->fmt_out->codec_ops->isr(sess);
+		return sess->fmt_out->codec_ops->isr(sess);
+	}
+
+	return IRQ_NONE;
 }
 
 static irqreturn_t vdec_threaded_isr(int irq, void *data)
