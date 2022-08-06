@@ -330,6 +330,8 @@ static int vdec_start_streaming(struct vb2_queue *q, unsigned int count)
 	atomic_set(&sess->esparser_queued_bufs, 0);
 	v4l2_ctrl_s_ctrl(sess->ctrl_min_buf_capture, 1);
 
+	core->cur_sess = sess;
+
 	ret = vdec_poweron(sess);
 	if (ret)
 		goto vififo_free;
@@ -341,7 +343,6 @@ static int vdec_start_streaming(struct vb2_queue *q, unsigned int count)
 						   "vdec_recycle");
 
 	sess->status = STATUS_INIT;
-	core->cur_sess = sess;
 	schedule_work(&sess->esparser_queue_work);
 	return 0;
 
