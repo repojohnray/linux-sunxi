@@ -17,6 +17,7 @@
 
 	aliases {
 		rtc0 = &rtc;
+		rtc1 = &vrtc;
 	};
 
 	spdif_dit: audio-codec-0 {
