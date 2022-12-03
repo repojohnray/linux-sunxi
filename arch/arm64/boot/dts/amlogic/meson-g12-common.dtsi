@@ -11,7 +11,6 @@
 #include <dt-bindings/interrupt-controller/arm-gic.h>
 #include <dt-bindings/reset/amlogic,meson-g12a-reset.h>
 #include <dt-bindings/thermal/thermal.h>
-#include <dt-bindings/power/meson-g12a-power.h>
 
 / {
 	interrupt-parent = <&gic>;
@@ -2494,6 +2493,5 @@
 			 <&clkc CLKID_NNA_AXI_CLK>;
 		clock-names = "core", "bus";
 		resets = <&reset RESET_NNA>;
-		power-domains = <&pwrc PWRC_G12A_NNA_ID>;
 	};
 };
