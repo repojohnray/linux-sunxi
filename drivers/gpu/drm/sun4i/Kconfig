@@ -17,7 +17,7 @@ if DRM_SUN4I
 
 config DRM_SUN4I_HDMI
 	tristate "Allwinner A10/A10s/A20/A31 HDMI Controller Support"
-	depends on ARM || COMPILE_TEST
+	depends on ARM || ARM64 || COMPILE_TEST
 	default DRM_SUN4I
 	help
 	  Choose this option if you have an Allwinner A10/A10s/A20/A31
@@ -34,7 +34,7 @@ config DRM_SUN4I_HDMI_CEC
 
 config DRM_SUN4I_BACKEND
 	tristate "Support for Allwinner A10 Display Engine Backend"
-	depends on ARM || COMPILE_TEST
+	depends on ARM || ARM64 || COMPILE_TEST
 	default DRM_SUN4I
 	help
 	  Choose this option if you have an Allwinner SoC with the
