@@ -1170,7 +1170,9 @@ static int sun8i_dwmac_probe(struct platform_device *pdev)
 	/* Optional regulator for PHY */
 	gmac->regulator_phy = devm_regulator_get(dev, "phy");
 	if (IS_ERR(gmac->regulator_phy)) {
-		dev_err_probe(dev, ret, "Failed to get PHY regulator\n");
+		ret = PTR_ERR(gmac->regulator_phy);
+		if (ret != -EPROBE_DEFER)
+			dev_err(dev, "Failed to get PHY regulator (%d)\n", ret);
 		return ret;
 	}
 
