@@ -287,6 +287,11 @@ config AT803X_PHY
 	  Currently supports the AR8030, AR8031, AR8033, AR8035 and internal
 	  QCA8337(Internal qca8k PHY) model
 
+config MAXIO_PHY
+	tristate "MAXIO PHYs"
+	help
+	  Supports the Maxio MAExxxx PHYs.
+
 config QSEMI_PHY
 	tristate "Quality Semiconductor PHYs"
 	help
